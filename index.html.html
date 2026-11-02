@@ -1,0 +1,2996 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Anatomía Conductual, Clínica y Árbol de Decisión 3D (WebXR Meta Quest 3) — Emilio "Shady Araujo" (2022–2026)</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg-base: #06090f;
+      --hud-bg: rgba(11, 16, 26, 0.86);
+      --hud-inner: rgba(17, 24, 39, 0.90);
+      --hud-border: rgba(148, 163, 184, 0.24);
+      --accent-primary: #38bdf8;
+      --accent-secondary: #cbd5e1;
+      --accent-tertiary: #818cf8;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-base);
+      background-image:
+        radial-gradient(circle at 50% 44%, rgba(56, 189, 248, 0.08) 0%, rgba(129, 140, 248, 0.03) 40%, transparent 72%),
+        linear-gradient(rgba(255,255,255,0.014) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.014) 1px, transparent 1px);
+      background-size: 100% 100%, 40px 40px, 40px 40px;
+      color: #f8fafc;
+      overflow: hidden;
+      height: 100dvh;
+      width: 100vw;
+      margin: 0;
+      user-select: none;
+      touch-action: none;
+      transition: background-color 0.35s ease;
+    }
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+      font-variant-numeric: tabular-nums;
+    }
+    .hud-glass {
+      background: var(--hud-bg);
+      border: 1px solid var(--hud-border);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.82), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+      transition: background 0.3s ease, border-color 0.3s ease;
+    }
+    .hud-card-inner {
+      background: var(--hud-inner);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      transition: background 0.3s ease;
+    }
+    .theme-accent-text {
+      color: var(--accent-primary);
+    }
+    .theme-secondary-text {
+      color: var(--accent-secondary);
+    }
+    /* Responsive 3D Node Labels */
+    .atom-label {
+      position: absolute;
+      transform: translate(-50%, -132%);
+      pointer-events: auto;
+      cursor: pointer;
+      white-space: nowrap;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      background: rgba(9, 13, 22, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      color: #f1f5f9;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.78);
+      transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+    }
+    @media (max-width: 640px) {
+      .atom-label {
+        font-size: 8.5px;
+        padding: 2px 6px;
+        max-width: 148px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+    .atom-label:hover {
+      transform: translate(-50%, -140%) scale(1.06);
+      border-color: var(--accent-primary);
+      z-index: 40 !important;
+    }
+    .atom-label.active-node {
+      border-color: var(--accent-primary);
+      background: rgba(15, 23, 42, 0.96);
+      color: #ffffff;
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.42);
+      z-index: 35 !important;
+    }
+    .atom-label-core {
+      transform: translate(-50%, -50%);
+      padding: 4.5px 11px;
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      background: rgba(12, 18, 30, 0.94);
+      border: 1.5px solid var(--accent-primary);
+      color: #ffffff;
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.35);
+      max-width: 240px;
+    }
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: rgba(255, 255, 255, 0.16);
+      height: 6px;
+      border-radius: 999px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--accent-primary);
+      cursor: pointer;
+      border: 2px solid #06090f;
+      box-shadow: 0 0 10px var(--accent-primary);
+    }
+    .custom-scroll {
+      touch-action: pan-y;
+      -webkit-overflow-scrolling: touch;
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: rgba(15, 18, 26, 0.4);
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.25);
+      border-radius: 999px;
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    /* WebXR Meta Quest 3 Passthrough & DOM Overlay Styles */
+    body.xr-passthrough-active {
+      background-color: transparent !important;
+      background-image: none !important;
+    }
+    #ARButton {
+      position: fixed !important;
+      bottom: 14px !important;
+      left: 14px !important;
+      right: auto !important;
+      width: auto !important;
+      min-width: 172px !important;
+      padding: 10px 16px !important;
+      border-radius: 14px !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 11px !important;
+      font-weight: 700 !important;
+      letter-spacing: 0.04em !important;
+      text-transform: uppercase !important;
+      background: rgba(14, 116, 144, 0.92) !important;
+      border: 1.5px solid #38bdf8 !important;
+      color: #f8fafc !important;
+      box-shadow: 0 0 24px rgba(56, 189, 248, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+      backdrop-filter: blur(16px) !important;
+      -webkit-backdrop-filter: blur(16px) !important;
+      z-index: 45 !important;
+      cursor: pointer !important;
+      transition: transform 0.15s ease, background-color 0.2s ease, box-shadow 0.2s ease !important;
+    }
+    #ARButton:hover {
+      background: rgba(2, 132, 199, 0.96) !important;
+      transform: translateY(-1px) scale(1.02) !important;
+      box-shadow: 0 0 30px rgba(56, 189, 248, 0.68) !important;
+    }
+    @media (max-width: 640px) {
+      #ARButton {
+        top: 86px !important;
+        bottom: auto !important;
+        left: auto !important;
+        right: 8px !important;
+        min-width: 130px !important;
+        padding: 7px 11px !important;
+        font-size: 10px !important;
+      }
+    }
+  </style>
+</head>
+<body class="relative w-screen h-[100dvh] overflow-hidden">
+
+  <!-- ===================================================================== -->
+  <!-- 1. FULL-SCREEN 3D GYROSCOPIC VIEWPORT                                 -->
+  <!-- ===================================================================== -->
+  <div id="AtomViewport" class="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing z-0">
+    <canvas id="atomCanvas" class="w-full h-full block"></canvas>
+    <div id="labelsContainer" class="absolute inset-0 pointer-events-none overflow-hidden z-10"></div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- 2. TOP BAR + 5-RING FILTER STRIP                                      -->
+  <!-- ===================================================================== -->
+  <header class="absolute top-2 inset-x-2 sm:top-3 sm:inset-x-4 z-30 flex flex-col gap-1.5 pointer-events-none">
+    <div class="flex items-center justify-between gap-2">
+      <!-- Compact Title Pill -->
+      <div class="hud-glass rounded-xl px-2.5 py-1.5 sm:px-3.5 sm:py-2 pointer-events-auto flex items-center gap-2.5 min-w-0">
+        <div id="badgeEmblem" class="w-7 h-7 sm:w-8 sm:h-8 shrink-0 rounded-lg bg-sky-950/80 border border-sky-400/40 flex items-center justify-center mono text-[10px] font-bold text-sky-200">
+          Ψ
+        </div>
+        <div class="min-w-0">
+          <div class="flex items-center gap-2">
+            <span class="mono text-[9px] uppercase tracking-wider theme-secondary-text truncate" id="headerRsiBadge">
+              FORMULACIÓN PSICOLÓGICA Y CONDUCTUAL · RSI v5.0
+            </span>
+          </div>
+          <h1 class="text-xs sm:text-sm font-bold text-white truncate">
+            Sujeto: <span class="theme-accent-text">Shady Araujo</span> <span class="hidden md:inline text-slate-300">· Psicología Profunda y 5 Anillos (32 Nodos)</span>
+          </h1>
+        </div>
+      </div>
+
+      <!-- Compact Action Buttons -->
+      <div class="flex items-center gap-1.5 pointer-events-auto shrink-0">
+        <div id="xrStatusPill" class="hud-glass px-2.5 py-1.5 rounded-xl text-[10px] mono font-semibold text-teal-300 border border-teal-400/35 hidden md:flex items-center gap-1.5" title="Estado del Motor Espacial WebXR (Escala 1u = 1m)">
+          <span id="xrStatusDot" class="w-2 h-2 rounded-full bg-teal-400 animate-pulse"></span>
+          <span id="xrStatusText">XR 0.1x (1.4m · Z:-1m)</span>
+        </div>
+        <button id="btnToggle3dHolo" type="button" class="hud-glass px-2.5 py-1.5 rounded-xl text-[11px] font-semibold text-teal-200 border border-teal-400/40 flex items-center gap-1 transition" title="Mostrar/Ocultar Paneles Holográficos 3D Espaciales (Nativos para Meta Quest 3)">
+          <span>🥽</span>
+          <span id="lblToggle3dHolo" class="hidden sm:inline">HUD 3D: ON</span>
+        </button>
+        <button id="btnCyclePalette" type="button" class="hud-glass px-2.5 py-1.5 rounded-xl text-[11px] font-semibold text-sky-200 border border-sky-400/30 flex items-center gap-1 transition" title="Cambiar Paleta de Colores">
+          <span>🎨</span>
+          <span id="lblCurrentPalette" class="hidden sm:inline">Ártico &amp; Platino</span>
+        </button>
+        <button id="btnToggleTelemetry" type="button" class="hud-glass px-2.5 py-1.5 rounded-xl text-[11px] font-semibold text-slate-100 flex items-center gap-1 transition" title="Ajustes de Órbita, Anillos y Paletas">
+          <span>🎛️</span>
+          <span class="hidden sm:inline">Órbita</span>
+        </button>
+        <button id="btnCenterAtom" type="button" class="hud-glass px-2.5 py-1.5 rounded-xl text-[11px] font-semibold text-slate-200 flex items-center gap-1 transition" title="Centrar Vista">
+          <span>🎯</span>
+        </button>
+        <button id="btnToggleLabels" type="button" class="hud-glass px-2.5 py-1.5 rounded-xl text-[11px] font-semibold text-slate-200 flex items-center gap-1 transition" title="Mostrar/Ocultar etiquetas">
+          <span>🏷️</span>
+          <span id="lblToggleLabelsText" class="hidden lg:inline">Nombres</span>
+        </button>
+        <button id="btnToggleHud" type="button" class="hud-glass px-2.5 py-1.5 rounded-xl text-[11px] font-semibold text-slate-200 flex items-center gap-1 transition" title="Modo Vista Limpia">
+          <span>👁️</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 5 Concentric Rings Quick Filter Strip (Ordered from Innermost Clinical Psychology -> Extras) -->
+    <div id="topQuickStrip" class="flex items-center gap-1.5 overflow-x-auto pointer-events-auto pb-0.5 no-scrollbar">
+      <button type="button" data-focus="all" class="focus-pill shrink-0 px-2.5 py-1 rounded-full text-[10px] font-semibold mono flex items-center gap-1.5 bg-white text-black border border-white backdrop-blur-md">
+        <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
+        Todos (32 Nodos)
+      </button>
+      <button type="button" data-focus="r1" class="focus-pill shrink-0 px-2.5 py-1 rounded-full text-[10px] font-medium mono flex items-center gap-1.5 bg-black/80 text-sky-200 border border-white/15 backdrop-blur-md">
+        <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
+        1. Psicología y Psiquiatría (8)
+      </button>
+      <button type="button" data-focus="r2" class="focus-pill shrink-0 px-2.5 py-1 rounded-full text-[10px] font-medium mono flex items-center gap-1.5 bg-black/80 text-indigo-200 border border-white/15 backdrop-blur-md">
+        <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+        2. Algoritmo / Árbol (6)
+      </button>
+      <button type="button" data-focus="r3" class="focus-pill shrink-0 px-2.5 py-1 rounded-full text-[10px] font-medium mono flex items-center gap-1.5 bg-black/80 text-teal-200 border border-white/15 backdrop-blur-md">
+        <span class="w-1.5 h-1.5 rounded-full bg-teal-400"></span>
+        3. Evolución 2022–2026 (5)
+      </button>
+      <button type="button" data-focus="r4" class="focus-pill shrink-0 px-2.5 py-1 rounded-full text-[10px] font-medium mono flex items-center gap-1.5 bg-black/80 text-amber-200 border border-white/15 backdrop-blur-md">
+        <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+        4. Entorno y 6 Rivales (8)
+      </button>
+      <button type="button" data-focus="r5" class="focus-pill shrink-0 px-2.5 py-1 rounded-full text-[10px] font-medium mono flex items-center gap-1.5 bg-black/80 text-slate-200 border border-white/15 backdrop-blur-md">
+        <span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+        5. Extras y Cultura (4)
+      </button>
+    </div>
+  </header>
+
+  <!-- ===================================================================== -->
+  <!-- 3. COLLAPSIBLE ORBIT & PALETTE DRAWER                                 -->
+  <!-- ===================================================================== -->
+  <aside id="leftHudPanel" class="hud-glass rounded-2xl p-3.5 w-[295px] sm:w-[325px] absolute left-2 sm:left-4 top-24 z-40 pointer-events-auto transition-all duration-200 hidden max-h-[72dvh] overflow-y-auto custom-scroll">
+    <div class="flex items-center justify-between border-b border-white/10 pb-2">
+      <div>
+        <div class="text-[9px] mono uppercase tracking-widest theme-accent-text font-semibold">
+          CONTROL DE CICLO ORBITAL Y ESTÉTICA
+        </div>
+        <div class="text-xs font-bold text-white mt-0.5">Emilio "Shady Araujo" (22 años)</div>
+      </div>
+      <button id="btnCloseTelemetry" type="button" class="px-2 py-0.5 rounded bg-white/10 text-slate-200 text-xs mono">✕</button>
+    </div>
+
+    <!-- 4 Sober & Refined Color Palettes -->
+    <div class="mt-2.5">
+      <div class="text-[10px] mono uppercase text-slate-400 mb-1.5">PALETA DE COLORES (4 TEMAS SOBRIOS)</div>
+      <div class="grid grid-cols-2 gap-1.5 text-[11px] mono">
+        <button type="button" data-theme="arctic" class="theme-btn py-1.5 px-2 rounded-lg bg-white text-black font-semibold flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-gradient-to-tr from-sky-400 to-slate-200"></span>
+          Ártico &amp; Platino
+        </button>
+        <button type="button" data-theme="champagne" class="theme-btn py-1.5 px-2 rounded-lg bg-black/60 text-amber-200 border border-white/10 flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-gradient-to-tr from-amber-300 to-stone-300"></span>
+          Grafito &amp; Champán
+        </button>
+        <button type="button" data-theme="sage" class="theme-btn py-1.5 px-2 rounded-lg bg-black/60 text-teal-200 border border-white/10 flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-gradient-to-tr from-teal-400 to-sky-300"></span>
+          Cobalto &amp; Salvia
+        </button>
+        <button type="button" data-theme="lavender" class="theme-btn py-1.5 px-2 rounded-lg bg-black/60 text-indigo-200 border border-white/10 flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-gradient-to-tr from-indigo-400 to-slate-200"></span>
+          Obsidiana &amp; Índigo
+        </button>
+      </div>
+    </div>
+
+    <!-- Multi-Axis Gyroscopic Speed & Current Flow Controls -->
+    <div class="mt-3 pt-2.5 border-t border-white/10 space-y-2.5">
+      <div>
+        <div class="flex justify-between text-[10px] mono text-slate-300 mb-1">
+          <span>ROTACIÓN MULTIEJE DE ANILLOS</span>
+          <span id="lblSpeed" class="theme-accent-text font-bold">1.0x (Vivo)</span>
+        </div>
+        <input id="sliderSpeed" type="range" min="0" max="25" value="10" class="w-full" />
+      </div>
+
+      <div>
+        <div class="flex justify-between text-[10px] mono text-slate-400 mb-1">
+          <span>CORRIENTE LAMINAR DEL NÚCLEO</span>
+          <span id="lblCurrentFlow">Suave</span>
+        </div>
+        <input id="sliderCurrentFlow" type="range" min="2" max="20" value="10" class="w-full" />
+      </div>
+
+      <!-- WebXR Spatial Scale & Position Controls (Meta Quest 3: 1 unit = 1 meter) -->
+      <div class="pt-2.5 border-t border-white/10 space-y-2">
+        <div class="flex items-center justify-between text-[10px] mono uppercase text-teal-300 font-semibold">
+          <span>CALIBRACIÓN ESPACIAL WEBXR (QUEST 3)</span>
+          <span id="lblXrScale" class="text-white font-bold">0.10x (1.42m)</span>
+        </div>
+        <div>
+          <div class="flex justify-between text-[10px] mono text-slate-400 mb-1">
+            <span>ESCALA HOLOGRAMA (1u = 1m)</span>
+            <span>Diámetro: ~1.4m</span>
+          </div>
+          <input id="sliderXrScale" type="range" min="5" max="20" value="10" class="w-full" />
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <div class="flex justify-between text-[10px] mono text-slate-400 mb-1">
+              <span>ALTURA Y</span>
+              <span id="lblXrHeight" class="text-sky-300 font-bold">1.20m</span>
+            </div>
+            <input id="sliderXrHeight" type="range" min="60" max="180" value="120" class="w-full" />
+          </div>
+          <div>
+            <div class="flex justify-between text-[10px] mono text-slate-400 mb-1">
+              <span>PROFUNDIDAD Z</span>
+              <span id="lblXrDepth" class="text-sky-300 font-bold">-1.00m</span>
+            </div>
+            <input id="sliderXrDepth" type="range" min="50" max="220" value="100" class="w-full" />
+          </div>
+        </div>
+        <label class="flex items-center justify-between gap-2 bg-black/50 px-2.5 py-1.5 rounded-lg border border-white/10 cursor-pointer text-[10.5px] mono text-slate-200">
+          <span>Gatillo XR abre Modal del Anillo</span>
+          <input id="chkXrAutoModal" type="checkbox" class="accent-sky-400" />
+        </label>
+        <button id="btnResetXrPose" type="button" class="w-full py-1.5 rounded-lg bg-teal-950/80 hover:bg-teal-900/90 text-teal-200 border border-teal-400/35 mono text-[10.5px] font-semibold transition">
+          🥽 Re-Anclar Escena (Escala 0.1 · Y:1.2m · Z:-1.0m)
+        </button>
+      </div>
+    </div>
+
+    <!-- 5 Concentric Ring Hierarchy Selector -->
+    <div class="mt-3 pt-2.5 border-t border-white/10">
+      <div class="flex items-center justify-between text-[10px] mono uppercase text-slate-400 mb-1.5">
+        <span>JERARQUÍA (DE MENOS A MÁS)</span>
+        <span id="lblNodeCount" class="theme-accent-text font-bold">32 NODOS</span>
+      </div>
+      <div class="grid grid-cols-1 gap-1 text-[11px] mono">
+        <button type="button" data-ring="all" class="ring-filter py-1.5 px-2.5 rounded-lg bg-white text-black font-semibold text-left flex justify-between">
+          <span>0–5. Todos los Anillos</span>
+          <span>32</span>
+        </button>
+        <button type="button" data-ring="r1" class="ring-filter py-1.5 px-2.5 rounded-lg bg-black/60 text-sky-200 border border-white/10 text-left flex justify-between">
+          <span>Anillo 1: Psicología y Psiquiatría</span>
+          <span>8</span>
+        </button>
+        <button type="button" data-ring="r2" class="ring-filter py-1.5 px-2.5 rounded-lg bg-black/60 text-indigo-200 border border-white/10 text-left flex justify-between">
+          <span>Anillo 2: Algoritmo y Árbol Decisión</span>
+          <span>6</span>
+        </button>
+        <button type="button" data-ring="r3" class="ring-filter py-1.5 px-2.5 rounded-lg bg-black/60 text-teal-200 border border-white/10 text-left flex justify-between">
+          <span>Anillo 3: Evolución Anual (2022–2026)</span>
+          <span>5</span>
+        </button>
+        <button type="button" data-ring="r4" class="ring-filter py-1.5 px-2.5 rounded-lg bg-black/60 text-amber-200 border border-white/10 text-left flex justify-between">
+          <span>Anillo 4: Entorno y 6 Rivales Clave</span>
+          <span>8</span>
+        </button>
+        <button type="button" data-ring="r5" class="ring-filter py-1.5 px-2.5 rounded-lg bg-black/60 text-slate-200 border border-white/10 text-left flex justify-between">
+          <span>Anillo 5: Extras y Cultura Pop</span>
+          <span>4</span>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===================================================================== -->
+  <!-- 4. COLLAPSIBLE BOTTOM SHEET / INSPECTOR DRAWER                        -->
+  <!-- ===================================================================== -->
+  <section id="rightHudCard" class="fixed inset-x-2 bottom-2 sm:inset-x-auto sm:right-4 sm:bottom-4 sm:w-[445px] z-30 pointer-events-auto transition-all duration-300">
+    <div class="hud-glass rounded-2xl overflow-hidden">
+
+      <!-- Always-Visible Compact Header Bar -->
+      <div id="sheetHeaderBar" class="px-3.5 py-2.5 flex items-center justify-between gap-2 cursor-pointer bg-black/40 hover:bg-black/65 transition">
+        <div class="flex items-center gap-2 min-w-0">
+          <span id="cardDot" class="w-2.5 h-2.5 shrink-0 rounded-full bg-sky-400 shadow-[0_0_8px_#38bdf8]"></span>
+          <div class="min-w-0">
+            <div class="flex items-center gap-1.5">
+              <span id="cardRingBadge" class="mono text-[9px] uppercase px-1.5 py-0.5 rounded bg-white/10 text-slate-200 border border-white/15">
+                NÚCLEO CENTRAL
+              </span>
+              <span id="cardCategory" class="mono text-[9px] uppercase text-slate-400 truncate hidden sm:inline">
+                FORMULACIÓN CLÍNICA
+              </span>
+            </div>
+            <h2 id="cardTitle" class="text-xs sm:text-sm font-bold text-white truncate mt-0.5">
+              NÚCLEO CENTRAL: Emilio "Shady Araujo"
+            </h2>
+          </div>
+        </div>
+
+        <button id="btnToggleSheet" type="button" class="shrink-0 px-2.5 py-1 rounded-lg bg-white/10 border border-white/20 text-white mono text-[10px] font-semibold flex items-center gap-1">
+          <span id="sheetToggleIcon">▲</span>
+          <span id="sheetToggleText">Ficha</span>
+        </button>
+      </div>
+
+      <!-- Expandable Drawer Body -->
+      <div id="sheetExpandableBody" class="px-3.5 pb-3 pt-1 border-t border-white/10 hidden max-h-[54dvh] overflow-y-auto custom-scroll">
+        <div class="hud-card-inner rounded-xl p-3 mt-1">
+          <div id="cardSubtitle" class="text-xs font-semibold theme-accent-text">
+            Formulación Psicodinámica, Cognitiva y Dimensional · 22 años · Barrio de Tepito
+          </div>
+          <p id="cardBody" class="text-xs text-slate-200 mt-2 leading-relaxed">
+            Sujeto masculino de 22 años cuyo proyecto vital está invertido al 100% en lograr visibilidad y estatus como Freestyler. En el Anillo 1 (el más cercano al núcleo) se despliega su perfilamiento mediante métodos de psicología de la personalidad (Big Five / AMPD), psicodinamia del Yo (mecanismos de defensa de Vaillant/Kernberg), teoría del apego (Bowlby), terapia cognitiva (Beck) y semiología del Examen del Estado Mental (MSE).
+          </p>
+          <div id="cardQuoteBox" class="mt-2 pt-2 border-t border-white/10 text-[11px] theme-secondary-text mono">
+            Toca cualquiera de los 8 nodos del Anillo 1 o abre el botón "🧠 Psique Clínica" abajo para leer el expediente completo.
+          </div>
+        </div>
+      </div>
+
+      <!-- Compact Bottom Action Bar (4 Direct Modals) -->
+      <div id="bottomHudBar" class="px-2.5 py-2 bg-black/75 border-t border-white/10 grid grid-cols-4 gap-1.5">
+        <button id="btnCardPsique" type="button" class="py-1.5 px-1.5 rounded-xl text-[10.5px] font-semibold bg-sky-950/85 hover:bg-sky-900/90 text-sky-200 border border-sky-400/45 transition flex items-center justify-center gap-1">
+          <span>🧠</span>
+          <span>Psique Clínica</span>
+        </button>
+        <button id="btnCardTabulador" type="button" class="py-1.5 px-1.5 rounded-xl text-[10.5px] font-semibold bg-indigo-950/75 hover:bg-indigo-900/80 text-indigo-200 border border-indigo-400/35 transition flex items-center justify-center gap-1">
+          <span>📊</span>
+          <span>Árbol N1-N5</span>
+        </button>
+        <button id="btnCardEvolucion" type="button" class="py-1.5 px-1.5 rounded-xl text-[10.5px] font-semibold bg-amber-950/70 hover:bg-amber-900/75 text-amber-200 border border-amber-400/35 transition flex items-center justify-center gap-1">
+          <span>⚔️</span>
+          <span>Rivales/Años</span>
+        </button>
+        <button id="btnOpenRsiBottom" type="button" class="py-1.5 px-1.5 rounded-xl text-[10.5px] font-semibold bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 border border-slate-400/30 transition flex items-center justify-center gap-1">
+          <span>⚡</span>
+          <span>Videos/RSI</span>
+        </button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- 5. NEW MODAL 0: PERFIL CLÍNICO-PSICOLÓGICO Y PSIQUIÁTRICO ULTRA-EXTENSO-->
+  <!-- ===================================================================== -->
+  <div id="psiqueModal" class="fixed inset-0 z-50 bg-black/88 backdrop-blur-md hidden items-center justify-center p-2 sm:p-5">
+    <div class="hud-glass rounded-2xl max-w-6xl w-full p-4 sm:p-6 max-h-[93dvh] overflow-y-auto custom-scroll">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3 gap-2">
+        <div>
+          <span class="mono text-[10px] uppercase tracking-widest theme-accent-text font-semibold">
+            ANILLO 1 (NÚCLEO PSICOLÓGICO MÁS CERCANO) // FORMULACIÓN CLÍNICA MULTIAXIAL OBSERVACIONAL
+          </span>
+          <h3 class="text-sm sm:text-lg font-bold text-white mt-0.5">
+            Perfilamiento Psicológico y Semiológico Ultra-Extenso — Emilio "Shady Araujo" (22 años)
+          </h3>
+        </div>
+        <button id="btnClosePsique" type="button" class="shrink-0 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-100 mono text-xs font-semibold">
+          ✕ Cerrar
+        </button>
+      </div>
+
+      <!-- Nota Metodológica -->
+      <div class="mt-3 px-3 py-2 rounded-xl bg-sky-950/35 border border-sky-400/30 text-[11px] text-slate-300 leading-relaxed">
+        <strong class="text-sky-300 mono">NOTA METODOLÓGICA:</strong> Este perfil integra metodologías de <strong>Psicología de la Personalidad (Modelo Pentafactorial / Big Five y Criterio B del AMPD)</strong>, <strong>Psicodinamia del Yo (Escala de Funcionamiento Defensivo de Vaillant y Relaciones Objetales de Kernberg)</strong>, <strong>Teoría del Apego (Bowlby / Bartholomew)</strong>, <strong>Terapia Cognitiva (Esquemas de Beck / Young)</strong> y <strong>Semiología del Examen del Estado Mental (MSE)</strong>, fundamentado empíricamente en 18 registros audiovisuales (2022–2026) y observación directa en campo. Constituye una formulación conductual-observacional y no sustituye una evaluación médica presencial.
+      </div>
+
+      <!-- EJE I: MODELO DIMENSIONAL DE PERSONALIDAD (BIG FIVE / AMPD) -->
+      <div class="mt-4">
+        <div class="mono text-[11px] uppercase tracking-wider text-sky-300 font-bold mb-2">
+          I. ESTRUCTURA DIMENSIONAL DE LA PERSONALIDAD (MODELO DE LOS CINCO GRANDES / AMPD)
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-2.5 text-xs">
+          <div class="hud-card-inner rounded-xl p-3 border-t-2 border-sky-400">
+            <div class="flex justify-between items-center mono text-[10px] text-sky-300 font-bold">
+              <span>1. NEUROTICISMO</span>
+              <span>82 / 100</span>
+            </div>
+            <div class="font-bold text-white mt-1">Hipersensibilidad al Rechazo Grupal</div>
+            <p class="text-[11px] text-slate-300 mt-1 leading-relaxed">
+              Mantiene calma basal mientras domina el ritmo, pero presenta <strong>labilidad afectiva reactiva</strong> ante el silencio acústico de la plaza o cuando el público valida los chistes del rival (&gt;60 dB). La herida no la produce el insulto rival, sino la percepción de exclusión colectiva.
+            </p>
+          </div>
+
+          <div class="hud-card-inner rounded-xl p-3 border-t-2 border-indigo-400">
+            <div class="flex justify-between items-center mono text-[10px] text-indigo-300 font-bold">
+              <span>2. EXTRAVERSIÓN</span>
+              <span>64 / 100</span>
+            </div>
+            <div class="font-bold text-white mt-1">Ambiversión Escindida (Escenario vs. Previa)</div>
+            <p class="text-[11px] text-slate-300 mt-1 leading-relaxed">
+              Alta dominancia y exhibicionismo competitivo dentro del círculo (invasión a 10 cm, reclamo de atención), pero <strong>retraimiento evitativo en la previa</strong> (aislarse en el celular sin saludar ni aplaudir para no exponerse al rechazo interpersonal).
+            </p>
+          </div>
+
+          <div class="hud-card-inner rounded-xl p-3 border-t-2 border-teal-400">
+            <div class="flex justify-between items-center mono text-[10px] text-teal-300 font-bold">
+              <span>3. APERTURA</span>
+              <span>74 / 100</span>
+            </div>
+            <div class="font-bold text-white mt-1">Alta Fluidez Fonética con Fijación Temática</div>
+            <p class="text-[11px] text-slate-300 mt-1 leading-relaxed">
+              Velocidad asociativa superior para el calambur, la paronomasia y el doble tempo, pero bajo presión recurre de forma estereotipada a sus 4 depósitos seguros de memoria: <em>Call of Duty</em>, <em>WWE</em>, anime y música escuchada en casa.
+            </p>
+          </div>
+
+          <div class="hud-card-inner rounded-xl p-3 border-t-2 border-amber-400">
+            <div class="flex justify-between items-center mono text-[10px] text-amber-300 font-bold">
+              <span>4. AMABILIDAD</span>
+              <span>38 / 100</span>
+            </div>
+            <div class="font-bold text-white mt-1">Antagonismo Defensivo vs. Lealtad Selectiva</div>
+            <p class="text-[11px] text-slate-300 mt-1 leading-relaxed">
+              Baja tolerancia a la crítica externa (bloqueos masivos en redes sociales documentados ante <a href="https://www.youtube.com/watch?v=7B8NR4-Qi40" target="_blank" class="text-sky-300 underline">Artezano</a>), suspicacia ante pares y descalificación del rival, coexistiendo con devoción protectora hacia su madre y lealtad hacia <strong>Crypto</strong>.
+            </p>
+          </div>
+
+          <div class="hud-card-inner rounded-xl p-3 border-t-2 border-slate-300">
+            <div class="flex justify-between items-center mono text-[10px] text-slate-200 font-bold">
+              <span>5. RESPONSABILIDAD</span>
+              <span>88 / 100</span>
+            </div>
+            <div class="font-bold text-white mt-1">Hiper-Persistencia Monolítica en Freestyle</div>
+            <p class="text-[11px] text-slate-300 mt-1 leading-relaxed">
+              Alta tenacidad e inversión conductual: viaja en camión o avión cada semana (Guadalajara, Tlaxcala, Puebla, Edomex) porque <strong>el 100% de su identidad descansa en lograr repercusión como Freestyler</strong>.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- EJE II: PSICODINAMIA Y MECANISMOS DE DEFENSA DEL YO -->
+      <div class="mt-5">
+        <div class="mono text-[11px] uppercase tracking-wider text-indigo-300 font-bold mb-2">
+          II. FORMULACIÓN PSICODINÁMICA Y MECANISMOS DE DEFENSA DEL YO (VAILLANT / KERNBERG)
+        </div>
+        <div class="overflow-x-auto rounded-xl border border-white/10 custom-scroll">
+          <table class="w-full text-left border-collapse text-xs min-w-[720px]">
+            <thead>
+              <tr class="bg-black/80 text-slate-300 mono text-[10px] border-b border-white/10">
+                <th class="py-2 px-3">Mecanismo de Defensa</th>
+                <th class="py-2 px-3">Función Intrapsíquica (Para qué le sirve)</th>
+                <th class="py-2 px-3">Manifestación Conductual y Evidencia Verificada en Video</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-white/10 text-[11.5px] text-slate-200">
+              <tr>
+                <td class="py-2.5 px-3 font-bold text-sky-300 mono">1. Proyección Persecutoria (Atribución Externa)</td>
+                <td class="py-2.5 px-3">Evitar que una derrota o el silencio del público dañen su autoestima idealizada de "mejor métrico/freestyler".</td>
+                <td class="py-2.5 px-3">Desde los 18 años (<a href="https://www.youtube.com/watch?v=VCqfuvbIZFk" target="_blank" class="text-sky-300 underline">vs. Koda 2022</a>: <em>"en esta batalla me querían sabotear"</em>) hasta los 22 años (<a href="https://www.youtube.com/watch?v=LsSAswou3Dw" target="_blank" class="text-sky-300 underline">vs. Maqui 2026</a>: <em>"por su culpa me odian en mi ciudad"</em>), atribuye el resultado adverso a un complot de jueces, envidia local o su ex-pareja.</td>
+              </tr>
+              <tr>
+                <td class="py-2.5 px-3 font-bold text-indigo-300 mono">2. Devaluación del Objeto Rival</td>
+                <td class="py-2.5 px-3">Restar valor al mérito del oponente cuando la grada explota a favor del otro (&gt;60 dB).</td>
+                <td class="py-2.5 px-3">Si el rival conecta con humor, lo degrada a <em>"hacer chistes para la gente"</em> (<a href="https://www.youtube.com/watch?v=kzBmGhKlat8" target="_blank" class="text-sky-300 underline">vs. Breix 02:14</a>); si conecta con estructura, lo acusa de <em>"traer rimas preparadas de libreta"</em> (<a href="https://www.youtube.com/watch?v=7B8NR4-Qi40" target="_blank" class="text-sky-300 underline">vs. Artezano</a> y <a href="https://www.youtube.com/watch?v=jadaSXxmloI" target="_blank" class="text-sky-300 underline">vs. Zett</a>).</td>
+              </tr>
+              <tr>
+                <td class="py-2.5 px-3 font-bold text-teal-300 mono">3. Aislamiento Preventivo (Escudo del Celular)</td>
+                <td class="py-2.5 px-3">Racionalización anticipatoria: protegerse antes de saber si la plaza lo va a apoyar o no.</td>
+                <td class="py-2.5 px-3">Se aísla mirando el teléfono sin aplaudir en la previa. Si luego no le gritan, su aparato psíquico concluye: <em>"no me gritan porque yo no les saludo ni soy su lamebotas, no porque haya rapeado mal"</em> (<a href="https://www.youtube.com/watch?v=XCymU-UbUJk" target="_blank" class="text-sky-300 underline">Final vs. Garcés 02:18</a>).</td>
+              </tr>
+              <tr>
+                <td class="py-2.5 px-3 font-bold text-amber-300 mono">4. Fabulación Compensatoria ("Mentiras Rápidas")</td>
+                <td class="py-2.5 px-3">Sostener simetría o superioridad jerárquica en charlas 1 a 1 en frío o cuando se queda sin argumento real.</td>
+                <td class="py-2.5 px-3">Suelta micro-ficciones instrumentales al vuelo (como afirmar en la <a href="https://www.youtube.com/watch?v=XCymU-UbUJk" target="_blank" class="text-sky-300 underline">Final de Revolución 2025</a> que <em>"hizo los 12 pasos"</em> pese a no tener historial de anexo) para cerrar brechas de vulnerabilidad.</td>
+              </tr>
+              <tr>
+                <td class="py-2.5 px-3 font-bold text-slate-200 mono">5. Formación Reactiva e Hiper-Compensación Proxémica</td>
+                <td class="py-2.5 px-3">Transformar la angustia de vulnerabilidad pública en intimidación corporal activa aprendida en Tepito.</td>
+                <td class="py-2.5 px-3">Justo cuando una rima le duele, exhibe una <strong>sonrisa sarcástica incongruente</strong>, se arranca el gorro (<em>Síndrome del Gorro</em>) y colapsa la distancia interpersonal a <code>10 cm</code> señalando el rostro del rival.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- EJE III: TEORÍA DEL APEGO, RELACIONES OBJETALES Y SEMIOLOGÍA MSE -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-5 text-xs">
+        <div class="hud-card-inner rounded-xl p-4 space-y-2.5">
+          <div class="mono text-[11px] uppercase tracking-wider text-teal-300 font-bold">
+            III. ARQUITECTURA DE APEGO Y RELACIONES OBJETALES (BOWLBY / KERNBERG)
+          </div>
+          <p class="text-[11.5px] text-slate-200 leading-relaxed">
+            <strong>1. Objeto Primario Sagrado (La Madre Trabajadora):</strong> Es el único vínculo libre de ambivalencia. En <a href="https://www.youtube.com/watch?v=zPLsiFrdzIM" target="_blank" class="text-sky-300 underline">Rematch 2022 vs. Zett</a> (min 02:46) y en <a href="https://www.youtube.com/watch?v=zDrl03UcH-o" target="_blank" class="text-sky-300 underline">Sangre x Sangre 2026 vs. SNK</a> (min 10:58), cuando tocan a su madre, se cae toda impostación escénica y emerge su afecto nuclear genuino: <em>"A mi madre no le he dado una casa, le di el amor que necesitaba... ¿para qué comprarle una casa si va a estar vacía?"</em>.
+          </p>
+          <p class="text-[11.5px] text-slate-200 leading-relaxed">
+            <strong>2. Apego Ansioso-Ambivalente y Escisión con su Ex-pareja (Zett):</strong> Durante la relación donde <strong>Zett</strong> llevaba el rol dominante, Emilio mostraba inhibición agresiva por temor a perder el vínculo: en <a href="https://www.youtube.com/watch?v=jadaSXxmloI" target="_blank" class="text-sky-300 underline">Liga Venom 2024</a> (min 02:34) confiesa en pleno beat <em>"si te insulto me veo mal... ¡si me saco el corazón te lo termino dando a ti!"</em> mientras ella lo reprende (<em>"¡pórtate como rapero!"</em>). Tras la ruptura, opera una <strong>escisión (splitting)</strong>: Zett pasa de objeto idealizado a objeto persecutorio al que responsabiliza de que la escena de CDMX no lo apoye.
+          </p>
+          <p class="text-[11.5px] text-slate-200 leading-relaxed">
+            <strong>3. Base Segura en Pares (Crypto):</strong> En un entorno vivido bajo el esquema de desconfianza, su amistad con <strong>Crypto</strong> (<a href="https://www.youtube.com/watch?v=-9DLqGRhN2I" target="_blank" class="text-sky-300 underline">BDM Edomex 2026</a> y Bellas Artes 30-30) actúa como regulador emocional externo donde desactiva las mentiras rápidas y la coraza defensiva.
+          </p>
+        </div>
+
+        <div class="hud-card-inner rounded-xl p-4 space-y-2.5">
+          <div class="mono text-[11px] uppercase tracking-wider text-amber-300 font-bold">
+            IV. EXAMEN DEL ESTADO MENTAL (MSE) Y NEUROCOGNICIÓN BAJO ESTRÉS
+          </div>
+          <p class="text-[11.5px] text-slate-200 leading-relaxed">
+            <strong>• Habla, Prosodia y Taquilalia Defensiva:</strong> Utiliza la aceleración del doble tempo no solo como destreza estética, sino como barrera acústica cuando se siente evaluado ante figuras de autoridad como <a href="https://www.youtube.com/watch?v=llABtfnlTj4" target="_blank" class="text-sky-300 underline">RC en Neza (2025)</a>, quien lo diagnostica en vivo: <em>"rapea rápido para espantarnos"</em>. En estado de quiebre (N5), la prosodia pierde modulación y pasa al grito rasgado hiper-tenso.
+          </p>
+          <p class="text-[11.5px] text-slate-200 leading-relaxed">
+            <strong>• Sobrecarga de Memoria de Trabajo y Perseveración Fonética:</strong> Cuando sube el estrés competitivo, su corteza prefrontal recurre a dos automatismos: (1) un <strong>buffer de latencia verbal de 2.2 s</strong> en el primer compás (<em>"No sé qué es lo que me quiso decir"</em>) y (2) <strong>perseveración fonética de 3 compases</strong> (repetir la misma raíz sonora 3 veces: <em>grada/degrada/granada</em> o <em>Arquímedes/aquí me ves/aquí me des</em>) sacrificando precisión semántica.
+          </p>
+          <p class="text-[11.5px] text-slate-200 leading-relaxed">
+            <strong>• Simbología y Descarte Toxicológico:</strong> El tatuaje de cruz retroauricular izquierdo, la placa militar y su léxico bajo presión (<em>pecado, cruz, templo, infierno, Dios</em>) reflejan una matriz cultural de culpa/redención católica de barrio. Su consumo de cannabis es reciente y recreativo (<a href="https://www.youtube.com/watch?v=7B8NR4-Qi40" target="_blank" class="text-sky-300 underline">LFM 2024</a>: <em>"me doy un gallo"</em>), descartándose por completo cualquier antecedente psiquiátrico de internamiento o anexo.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- 6. MODAL 1: ÁRBOL DE DECISIÓN Y TABULADOR DE PRESIÓN N1-N5            -->
+  <!-- ===================================================================== -->
+  <div id="tabuladorModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-2 sm:p-5">
+    <div class="hud-glass rounded-2xl max-w-5xl w-full p-4 sm:p-6 max-h-[92dvh] overflow-y-auto custom-scroll">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3 gap-2">
+        <div>
+          <div class="mono text-[10px] uppercase tracking-widest theme-accent-text font-semibold">
+            ÁRBOL DE DECISIÓN CONDUCTUAL // LECTURA OBJETIVA N1 A N5
+          </div>
+          <h3 class="text-sm sm:text-lg font-bold text-white mt-0.5">
+            Tabulador de Presión Ambiental y Respuesta Táctica — Emilio "Shady Araujo"
+          </h3>
+        </div>
+        <button id="btnCloseTabulador" type="button" class="shrink-0 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-100 mono text-xs font-semibold">
+          ✕ Cerrar
+        </button>
+      </div>
+
+      <div class="hud-card-inner rounded-xl p-3.5 sm:p-4 mt-3">
+        <div class="mono text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-300 font-semibold mb-2">
+          DESLIZA PARA EVALUAR EL NIVEL DE PRESIÓN EN LA PLAZA (N1 A N5):
+        </div>
+        <input id="sliderTabLevel" type="range" min="1" max="5" value="3" class="w-full" />
+        <div class="flex justify-between mono text-[10px] sm:text-xs text-slate-400 mt-1.5 px-1">
+          <span>N1 (Previa)</span>
+          <span>N2 (En Control)</span>
+          <span class="theme-accent-text font-bold">N3 (Calculando)</span>
+          <span>N4 (Picado)</span>
+          <span class="text-amber-300 font-bold">N5 (Quiebre)</span>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-3.5">
+          <div class="bg-black/60 border border-white/10 rounded-xl p-2.5">
+            <div class="text-[10px] text-slate-400">Ruido al Rival</div>
+            <div id="tabKpiDb" class="mono text-sm sm:text-base font-bold text-white mt-0.5">40 – 60 dB</div>
+          </div>
+          <div class="bg-black/60 border border-white/10 rounded-xl p-2.5">
+            <div class="text-[10px] text-slate-400">Estado Gorro</div>
+            <div id="tabKpiGorro" class="mono text-sm sm:text-base font-bold text-white mt-0.5">Puesto (Calculando)</div>
+          </div>
+          <div class="bg-black/60 border border-sky-400/35 rounded-xl p-2.5">
+            <div class="text-[10px] theme-accent-text">Distancia Rival</div>
+            <div id="tabKpiDist" class="mono text-sm sm:text-base font-bold text-white mt-0.5">100 cm</div>
+          </div>
+          <div class="bg-black/60 border border-white/10 rounded-xl p-2.5">
+            <div class="text-[10px] text-slate-400">Atajo Cognitivo</div>
+            <div id="tabKpiMuletilla" class="mono text-xs sm:text-sm font-bold text-white mt-0.5">"No sé qué dijo" + 3x</div>
+          </div>
+          <div class="col-span-2 sm:col-span-1 bg-sky-950/35 border border-sky-400/45 rounded-xl p-2.5">
+            <div class="text-[10px] text-sky-300">Frecuencia Observada</div>
+            <div class="flex items-baseline justify-between sm:block">
+              <div id="tabKpiProb" class="mono text-sm sm:text-base font-bold text-sky-300 mt-0.5">~78.0%</div>
+              <div id="tabKpiRoute" class="text-[10px] text-slate-300">Ruta D Activa</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto mt-3.5 rounded-xl border border-white/10 custom-scroll">
+        <table class="w-full text-left border-collapse text-xs min-w-[650px]">
+          <thead>
+            <tr class="bg-black/80 text-slate-300 mono text-[10px] border-b border-white/10">
+              <th class="py-2 px-2.5">Nivel</th>
+              <th class="py-2 px-2.5">Ruido Plaza</th>
+              <th class="py-2 px-2.5">Kinésica / Gorro</th>
+              <th class="py-2 px-2.5">Atajo Cognitivo</th>
+              <th class="py-2 px-2.5">Frec.</th>
+              <th class="py-2 px-2.5">Conducta y Mecanismo Defensivo Observado</th>
+            </tr>
+          </thead>
+          <tbody id="tabTableBody" class="divide-y divide-white/10 mono text-[11px]">
+          </tbody>
+        </table>
+      </div>
+
+      <div class="mt-3.5 pt-3 border-t border-white/10">
+        <div class="mono text-[10px] uppercase tracking-wider theme-accent-text font-semibold mb-2">
+          CONSTANTES DE PERFIL VERIFICADAS EN CAMPO Y VIDEO:
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-[11px] mono">
+          <div class="hud-card-inner rounded-lg px-3 py-2 flex justify-between items-center">
+            <span class="text-slate-400">Objetivo Real:</span>
+            <span class="text-sky-300 font-bold">100% Visibilidad Freestyle</span>
+          </div>
+          <div class="hud-card-inner rounded-lg px-3 py-2 flex justify-between items-center">
+            <span class="text-slate-400">Ex-pareja:</span>
+            <span class="text-indigo-300 font-bold">Zett (No "La Set")</span>
+          </div>
+          <div class="hud-card-inner rounded-lg px-3 py-2 flex justify-between items-center">
+            <span class="text-slate-400">Zona Segura:</span>
+            <span class="text-teal-300 font-bold">Amistad c/ Crypto</span>
+          </div>
+          <div class="hud-card-inner rounded-lg px-3 py-2 flex justify-between items-center">
+            <span class="text-slate-400">Objeto Sagrado:</span>
+            <span class="text-amber-300 font-bold">Su Madre (Quiebre N5)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- 7. MODAL 2: EVOLUCIÓN (2022–2026) Y RADIOGRAFÍA DE SUS 6 RIVALES      -->
+  <!-- ===================================================================== -->
+  <div id="evolucionModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-2 sm:p-5">
+    <div class="hud-glass rounded-2xl max-w-5xl w-full p-4 sm:p-6 max-h-[92dvh] overflow-y-auto custom-scroll">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3 gap-2">
+        <div>
+          <span class="mono text-[10px] uppercase tracking-widest text-sky-400 font-semibold">
+            ANILLOS 3 Y 4 // EVOLUCIÓN (2022–2026) Y ANÁLISIS INDIVIDUAL DE SUS RIVALES
+          </span>
+          <h3 class="text-sm sm:text-lg font-bold text-white mt-0.5">
+            Cómo ha evolucionado su estilo por año y qué rasgo psicológico desnuda cada rival
+          </h3>
+        </div>
+        <button id="btnCloseEvolucion" type="button" class="shrink-0 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-100 mono text-xs font-semibold">
+          ✕ Cerrar
+        </button>
+      </div>
+
+      <!-- Section A: Multi-Year Evolution 2022-2026 -->
+      <div class="mono text-[10px] uppercase tracking-wider text-teal-300 font-semibold mt-3 mb-2">
+        A. LÍNEA EVOLUTIVA MULTIANUAL (ANILLO 3: 2022 A 2026)
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-2.5 text-xs">
+        <div class="hud-card-inner rounded-xl p-3 border-t-2 border-sky-400 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="mono text-xs font-bold text-sky-300">2022</span>
+              <span class="mono text-[9px] px-1.5 py-0.5 rounded bg-white/10 text-slate-300">18 años</span>
+            </div>
+            <h4 class="font-bold text-white mt-1">Métricas sin Remarcar y Face to Face</h4>
+            <p class="text-[11px] text-slate-300 mt-1.5 leading-relaxed">
+              En Monumento a la Revolución buscaba diferenciarse haciendo <em>"métricas sin remarcar la terminación"</em> y ya verbalizaba desconfianza hacia el jurado (<em>"me querían sabotear"</em>). En sep. 2022 enfrenta a <strong>Zett</strong> en semifinales de Rematch.
+            </p>
+          </div>
+          <div class="mt-2.5 pt-2 border-t border-white/10 space-y-1 mono text-[10px]">
+            <a href="https://www.youtube.com/watch?v=VCqfuvbIZFk" target="_blank" rel="noopener noreferrer" class="block text-sky-300 hover:underline">↗ Koda vs Shady (Jul 2022)</a>
+            <a href="https://www.youtube.com/watch?v=zPLsiFrdzIM" target="_blank" rel="noopener noreferrer" class="block text-sky-300 hover:underline">↗ Shady vs Zett (Sep 2022)</a>
+          </div>
+        </div>
+
+        <div class="hud-card-inner rounded-xl p-3 border-t-2 border-indigo-400 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="mono text-xs font-bold text-indigo-300">2023</span>
+              <span class="mono text-[9px] px-1.5 py-0.5 rounded bg-white/10 text-slate-300">19 años</span>
+            </div>
+            <h4 class="font-bold text-white mt-1">Doble Tempo y Queja del Silencio</h4>
+            <p class="text-[11px] text-slate-300 mt-1.5 leading-relaxed">
+              Acelera su doble tempo en <em>Shaolin Battles</em> y llega a la final de <em>Hakai 3vs3</em> haciendo equipo con Maquiavélico frente a Zett y Artezano. Contra Aldo Camp surge por primera vez su queja de que no le gritan las barras.
+            </p>
+          </div>
+          <div class="mt-2.5 pt-2 border-t border-white/10 space-y-1 mono text-[10px]">
+            <a href="https://www.youtube.com/watch?v=s5FJTt075qI" target="_blank" rel="noopener noreferrer" class="block text-indigo-300 hover:underline">↗ Aldo Camp vs Shady (2023)</a>
+            <a href="https://www.youtube.com/watch?v=UMutWcaNZkA" target="_blank" rel="noopener noreferrer" class="block text-indigo-300 hover:underline">↗ Final Hakai 3vs3 (Nov 2023)</a>
+          </div>
+        </div>
+
+        <div class="hud-card-inner rounded-xl p-3 border-t-2 border-teal-400 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="mono text-xs font-bold text-teal-300">2024</span>
+              <span class="mono text-[9px] px-1.5 py-0.5 rounded bg-white/10 text-slate-300">20 años</span>
+            </div>
+            <h4 class="font-bold text-white mt-1">Confesión a Zett y Salto a Tarimas</h4>
+            <p class="text-[11px] text-slate-300 mt-1.5 leading-relaxed">
+              En Liga Venom (sep. 2024) se rehúsa a atacar a <strong>Zett</strong> (<em>"si me saco el corazón te lo termino dando a ti"</em>). Choca con Artezano en LFM por bloquear en redes, debuta en <em>Camp League</em> vs Damián SNK y viaja a BDM Puebla.
+            </p>
+          </div>
+          <div class="mt-2.5 pt-2 border-t border-white/10 space-y-1 mono text-[10px]">
+            <a href="https://www.youtube.com/watch?v=jadaSXxmloI" target="_blank" rel="noopener noreferrer" class="block text-teal-300 hover:underline">↗ Zett vs Shady (Sep 2024)</a>
+            <a href="https://www.youtube.com/watch?v=7B8NR4-Qi40" target="_blank" rel="noopener noreferrer" class="block text-teal-300 hover:underline">↗ Artezano vs Shady (May 2024)</a>
+          </div>
+        </div>
+
+        <div class="hud-card-inner rounded-xl p-3 border-t-2 border-amber-400 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="mono text-xs font-bold text-amber-300">2025</span>
+              <span class="mono text-[9px] px-1.5 py-0.5 rounded bg-white/10 text-slate-300">21 años</span>
+            </div>
+            <h4 class="font-bold text-white mt-1">Campeón en Revolución, GDL y RC</h4>
+            <p class="text-[11px] text-slate-300 mt-1.5 leading-relaxed">
+              Gana la final de <em>Death Match</em> en Revolución contra Garcés ($2,000 MXN), consolida su ruta hacia Guadalajara (<em>Club de la Pelea GDL</em>) y se mide contra la leyenda <strong>RC</strong> en Neza/CDMX.
+            </p>
+          </div>
+          <div class="mt-2.5 pt-2 border-t border-white/10 space-y-1 mono text-[10px]">
+            <a href="https://www.youtube.com/watch?v=XCymU-UbUJk" target="_blank" rel="noopener noreferrer" class="block text-amber-300 hover:underline">↗ Garcés vs Shady (Abr 2025)</a>
+            <a href="https://www.youtube.com/watch?v=llABtfnlTj4" target="_blank" rel="noopener noreferrer" class="block text-amber-300 hover:underline">↗ RC vs Shady (Nov 2025)</a>
+          </div>
+        </div>
+
+        <div class="hud-card-inner rounded-xl p-3 border-t-2 border-slate-300 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="mono text-xs font-bold text-slate-200">2026</span>
+              <span class="mono text-[9px] px-1.5 py-0.5 rounded bg-white/10 text-slate-300">22 años</span>
+            </div>
+            <h4 class="font-bold text-white mt-1">Exhibiciones Estelares y Repercusión</h4>
+            <p class="text-[11px] text-slate-300 mt-1.5 leading-relaxed">
+              Enfocado al 100% en su visibilidad como Freestyler: encabeza exhibición de 15 min contra <strong>SNK</strong> en Tlaxcala, choca con <strong>Kodigo</strong> en Chess Battles, compite con Crypto en BDM Edomex y protagoniza los duelos de MDP y 30-30.
+            </p>
+          </div>
+          <div class="mt-2.5 pt-2 border-t border-white/10 space-y-1 mono text-[10px]">
+            <a href="https://www.youtube.com/watch?v=zDrl03UcH-o" target="_blank" rel="noopener noreferrer" class="block text-slate-200 hover:underline">↗ SNK vs Shady (Ago 2026)</a>
+            <a href="https://www.youtube.com/watch?v=GvMJlofuo-U" target="_blank" rel="noopener noreferrer" class="block text-slate-200 hover:underline">↗ Kodigo vs Shady (Ago 2026)</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section B: Detailed Breakdown of Past & Present Rivals -->
+      <div class="mono text-[10px] uppercase tracking-wider text-amber-300 font-semibold mt-5 mb-2">
+        B. RADIOGRAFÍA PROFUNDA DE SUS RIVALES PASADOS Y PRESENTES (DISTRIBUIDOS EN EL ANILLO 4)
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 text-xs">
+        <div class="hud-card-inner rounded-xl p-3">
+          <div class="mono text-[10px] text-amber-300 font-bold">1. ZETT (2022–2024 · EX-PAREJA Y RIVAL)</div>
+          <p class="text-[11px] text-slate-300 mt-1 leading-relaxed">
+            En <a href="https://www.youtube.com/watch?v=zPLsiFrdzIM" target="_blank" class="text-sky-300 underline">Rematch 2022</a> ella le reclama que se hizo conocido por las vistas que ellas le dieron en <em>Face to Face</em>. En <a href="https://www.youtube.com/watch?v=jadaSXxmloI" target="_blank" class="text-sky-300 underline">Liga Venom 2024</a> ella le exige que deje de verse blando (<em>"quítate el corazón, empieza a hacer free"</em>) y él confiesa que si se saca el corazón se lo termina dando a ella.
+          </p>
+        </div>
+
+        <div class="hud-card-inner rounded-xl p-3">
+          <div class="mono text-[10px] text-amber-300 font-bold">2. ARTEZANO (2023–2024 · BLOQUEOS EN REDES)</div>
+          <p class="text-[11px] text-slate-300 mt-1 leading-relaxed">
+            En <a href="https://www.youtube.com/watch?v=7B8NR4-Qi40" target="_blank" class="text-sky-300 underline">LFM CDMX 2024</a> Artezano expone cómo Shady gestiona el rechazo digital: bloquea en redes a sus críticos (<em>"los que te odian a ti te topan perfectamente"</em>). Shady responde aceptando que lo tiene bloqueado y acusándolo de usar rimas preparadas.
+          </p>
+        </div>
+
+        <div class="hud-card-inner rounded-xl p-3">
+          <div class="mono text-[10px] text-amber-300 font-bold">3. MAQUI (2023–2026 · DE ALIADO A VERDUGO)</div>
+          <p class="text-[11px] text-slate-300 mt-1 leading-relaxed">
+            Fueron compañeros en la <a href="https://www.youtube.com/watch?v=UMutWcaNZkA" target="_blank" class="text-sky-300 underline">Final de Hakai 3vs3 (2023)</a>. Por esa cercanía previa, en <a href="https://www.youtube.com/watch?v=LsSAswou3Dw" target="_blank" class="text-sky-300 underline">Mesa de Piedra (2026)</a> Maqui sabe exactamente dónde apretar con el calambur de <em>"Zett / sed"</em>, logrando que Shady se quite el gorro al min 01:57.
+          </p>
+        </div>
+
+        <div class="hud-card-inner rounded-xl p-3">
+          <div class="mono text-[10px] text-amber-300 font-bold">4. BREIX, ST Y ALDO CAMP (EL CHOQUE ACÚSTICO)</div>
+          <p class="text-[11px] text-slate-300 mt-1 leading-relaxed">
+            Rivales que conectan con el humor de la grada. En <a href="https://www.youtube.com/watch?v=kzBmGhKlat8" target="_blank" class="text-sky-300 underline">Bellas Artes 30-30 vs Breix</a> y <a href="https://www.youtube.com/watch?v=2meNypTZw14" target="_blank" class="text-sky-300 underline">MDP vs ST</a>, cuando la gente festeja los chistes rivales, Shady descalifica el estilo ajeno, pide cortes al DJ y recita su currículum de viajes.
+          </p>
+        </div>
+
+        <div class="hud-card-inner rounded-xl p-3">
+          <div class="mono text-[10px] text-amber-300 font-bold">5. GARCÉS Y SANGRE AZUL (2025 · CALLE Y GDL)</div>
+          <p class="text-[11px] text-slate-300 mt-1 leading-relaxed">
+            Contra <a href="https://www.youtube.com/watch?v=XCymU-UbUJk" target="_blank" class="text-sky-300 underline">Garcés en Revolución (2025)</a> gana el premio en efectivo pero revela su coraza social (disculparse por no saludar al llegar e inventar la frase de los 12 pasos). Contra <a href="https://www.youtube.com/watch?v=orZ8WfcF9bk" target="_blank" class="text-sky-300 underline">Sangre Azul en GDL</a> afianza su estatus de visitante.
+          </p>
+        </div>
+
+        <div class="hud-card-inner rounded-xl p-3">
+          <div class="mono text-[10px] text-amber-300 font-bold">6. SNK, RC Y KODIGO (RETO A LAS LEYENDAS)</div>
+          <p class="text-[11px] text-slate-300 mt-1 leading-relaxed">
+            Ante figuras consagradas busca el golpe viral: <a href="https://www.youtube.com/watch?v=llABtfnlTj4" target="_blank" class="text-sky-300 underline">RC (2025)</a> le detecta que acelera el doble tempo para espantar; a <a href="https://www.youtube.com/watch?v=GvMJlofuo-U" target="_blank" class="text-sky-300 underline">Kodigo (2026)</a> lo encara a 10 cm; y ante <a href="https://www.youtube.com/watch?v=zDrl03UcH-o" target="_blank" class="text-sky-300 underline">SNK (2024 y 2026)</a> estalla cuando tocan a su madre.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- 8. MODAL 3: ARCHIVO DE 18 BATALLAS (2022–2026) Y MOTOR RSI            -->
+  <!-- ===================================================================== -->
+  <div id="expedienteModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-2 sm:p-5">
+    <div class="hud-glass rounded-2xl max-w-5xl w-full p-4 sm:p-6 max-h-[92dvh] overflow-y-auto custom-scroll">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3 gap-2">
+        <div>
+          <span class="mono text-[10px] uppercase tracking-widest theme-secondary-text font-semibold">
+            EXPEDIENTE MULTIANUAL (18 VIDEOS VERIFICADOS) &amp; MOTOR RSI v5.0
+          </span>
+          <h3 class="text-sm sm:text-lg font-bold text-white mt-0.5">
+            Repositorio de Evidencia en YouTube (2022–2026) y Bitácora de Campo
+          </h3>
+        </div>
+        <button id="btnCloseExpediente" type="button" class="shrink-0 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-100 mono text-xs font-semibold">
+          ✕ Cerrar
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-3.5 text-xs">
+        <div class="space-y-3">
+          <div class="mono text-[11px] uppercase theme-accent-text font-semibold">
+            1. 18 VIDEOS ANALIZADOS (2022–2026) — TOCA PARA ABRIR
+          </div>
+          <div class="flex flex-wrap gap-1.5 max-h-56 overflow-y-auto custom-scroll pr-1">
+            <a href="https://www.youtube.com/watch?v=VCqfuvbIZFk" target="_blank" rel="noopener noreferrer" class="px-2 py-1 rounded-lg bg-black/70 hover:bg-white/10 border border-sky-400/30 text-sky-200 mono text-[10.5px]">
+              ↗ [2022] Koda vs Shady (Inferno)
+            </a>
+            <a href="https://www.youtube.com/watch?v=zPLsiFrdzIM" target="_blank" rel="noopener noreferrer" class="px-2 py-1 rounded-lg bg-black/70 hover:bg-white/10 border border-sky-400/30 text-sky-200 mono text-[10.5px]">
+              ↗ [2022] Shady vs Zett (Rematch Semifinal)
+            </a>
+            <a href="https://www.youtube.com/watch?v=q2-TE2Vwfp8" target="_blank" rel="noopener noreferrer" class="px-2 py-1 rounded-lg bg-black/70 hover:bg-white/10 border border-indigo-400/30 text-indigo-200 mono text-[10.5px]">
+              ↗ [2023] Shady vs AD (Torneo 7 DRB)
+            </a>
+            <a href="https://www.youtube.com/watch?v=s5FJTt075qI" target="_blank" rel="noopener noreferrer" class="px-2 py-1 rounded-lg bg-black/70 hover:bg-white/10 border border-indigo-400/30 text-indigo-200 mono text-[10.5px]">
+              ↗ [2023] Aldo Camp vs Shady (Shaolin CDMX)
+            </a>
+            <a href="https://www.youtube.com/watch?v=UMutWcaNZkA" target="_blank" rel="noopener noreferrer" class="px-2 py-1 rounded-lg bg-black/70 hover:bg-white/10 border border-indigo-400/30 text-indigo-200 mono text-[10.5px]">
+              ↗ [2023] Final Hakai 3vs3 (Maqui/Shady vs Zett)
+            </a>
+            <a href="https://www.youtube.com/watch?v=c86Sj1PAJew" target="_blank" rel="noopener noreferrer" class="px-2 py-1 rounded-lg bg-black/70 hover:bg-white/10 border border-teal-400/30 text-teal-200 mono text-[10.5px]">
+              ↗ [2024] BDM Duplas CDMX (c/ Soni Montiel)
+            </a>
+            <a href="https://www.youtube.com/watch?v=7B8NR4-Qi40" target="_blank" rel="noopener noreferrer" class="px-2 py-1 rounded-lg bg-black/70 hover:bg-white/10 border border-teal-400/30 text-teal-200 mono text-[10.5px]">
+              ↗ [2024] Artezano vs Shady (LFM CDMX)
+            </a>
+            <a href="https://www.youtube.com/watch?v=pkqrqw_gS7o" target="_blank" rel="noopener noreferrer" class="px-2 py-1 rounded-lg bg-black/70 hover:bg-white/10 border border-teal-400/30 text-teal-200 mono text-[10.5px]">
+              ↗ [2024] Damián SNK vs Shady (Camp League)
+            </a>
+            <a href="https://www.youtube.com/watch?v=jadaSXxmloI" target="_blank" rel="noopener noreferrer" class="px-2 py-1 rounded-lg bg-black/70 hover:bg-white/10 border border-teal-400/30 text-teal-200 mono text-[10.5px]">
+              ↗ [2024] Zett vs Shady (Liga Venom Cuartos)
+            </a>
+            <a href="https://www.youtube.com/watch?v=1i2tgk2iheQ" target="_blank" rel="noopener noreferrer" class="px-2 py-1 rounded-lg bg-black/70 hover:bg-white/10 border border-teal-400/30 text-teal-200 mono text-[10.5px]">
+              ↗ [2024] Shady vs Jonas (BDM Puebla)
+            </a>
+            <a href="https://www.youtube.com/watch?v=XCymU-UbUJk" target="_blank" rel="noopener noreferrer" class="px-2 py-1 rounded-lg bg-black/70 hover:bg-white/10 border border-amber-400/30 text-amber-200 mono text-[10.5px]">
+              ↗ [2025] Garcés vs Shady (Final Revolución)
+            </a>
+            <a href="https://www.youtube.com/watch?v=orZ8WfcF9bk" target="_blank" rel="noopener noreferrer" class="px-2 py-1 rounded-lg bg-black/70 hover:bg-white/10 border border-amber-400/30 text-amber-200 mono text-[10.5px]">
+              ↗ [2025] Shady vs Sangre Azul (Club Pelea GDL)
+            </a>
+            <a href="https://www.youtube.com/watch?v=llABtfnlTj4" target="_blank" rel="noopener noreferrer" class="px-2 py-1 rounded-lg bg-black/70 hover:bg-white/10 border border-amber-400/30 text-amber-200 mono text-[10.5px]">
+              ↗ [2025] RC vs Shady (CDMX / Neza)
+            </a>
+            <a href="https://www.youtube.com/watch?v=-9DLqGRhN2I" target="_blank" rel="noopener noreferrer" class="px-2 py-1 rounded-lg bg-black/70 hover:bg-white/10 border border-slate-400/30 text-slate-200 mono text-[10.5px]">
+              ↗ [2026] BDM Edomex 3vs3 (con Crypto)
+            </a>
+            <a href="https://www.youtube.com/watch?v=zDrl03UcH-o" target="_blank" rel="noopener noreferrer" class="px-2 py-1 rounded-lg bg-black/70 hover:bg-white/10 border border-slate-400/30 text-slate-200 mono text-[10.5px]">
+              ↗ [2026] SNK vs Shady (Sangre x Sangre Tlaxcala)
+            </a>
+            <a href="https://www.youtube.com/watch?v=GvMJlofuo-U" target="_blank" rel="noopener noreferrer" class="px-2 py-1 rounded-lg bg-black/70 hover:bg-white/10 border border-slate-400/30 text-slate-200 mono text-[10.5px]">
+              ↗ [2026] Kodigo vs Shady (Chess Battles)
+            </a>
+            <a href="https://www.youtube.com/watch?v=LsSAswou3Dw" target="_blank" rel="noopener noreferrer" class="px-2 py-1 rounded-lg bg-black/70 hover:bg-white/10 border border-slate-400/30 text-slate-200 mono text-[10.5px]">
+              ↗ [2026] Maqui vs Shady (Mesa de Piedra)
+            </a>
+            <a href="https://www.youtube.com/watch?v=kzBmGhKlat8" target="_blank" rel="noopener noreferrer" class="px-2 py-1 rounded-lg bg-black/70 hover:bg-white/10 border border-slate-400/30 text-slate-200 mono text-[10.5px]">
+              ↗ [2026] Breix vs Shady (Bellas Artes 30-30)
+            </a>
+          </div>
+
+          <div class="mono text-[11px] uppercase theme-secondary-text font-semibold pt-2">
+            2. BITÁCORA DE CALIBRACIÓN RECURSIVA (RSI v5.0)
+          </div>
+          <ul id="rsiLogList" class="space-y-2 max-h-44 overflow-y-auto custom-scroll pr-1">
+          </ul>
+        </div>
+
+        <form id="rsiForm" class="hud-card-inner rounded-xl p-3.5 space-y-3">
+          <div class="mono text-[11px] uppercase theme-accent-text font-semibold">
+            3. REGISTRAR NUEVA OBSERVACIÓN DE CAMPO (RSI)
+          </div>
+
+          <div>
+            <label class="block mono text-[11px] text-slate-300 mb-1">¿Qué nodo del Árbol de Decisión pusiste a prueba?</label>
+            <select id="rsiInputStimulus" class="w-full bg-black border border-white/15 rounded-lg px-2.5 py-2 text-slate-100 text-xs">
+              <option value="Público gritó al rival (>60 dB) y él se quitó el gorro / acusó envidia">Público gritó al rival (&gt;60 dB) y él se quitó el gorro / acusó envidia</option>
+              <option value="Doble sentido con su ex-pareja Zett ('sed / Zett') y sonrisa sarcástica">Doble sentido con su ex-pareja Zett ('sed / Zett') y sonrisa sarcástica</option>
+              <option value="Mención a su madre o familia: activó respuesta frontal inmediata">Mención a su madre o familia: activó respuesta frontal inmediata</option>
+              <option value="Bucle fonético de 3 compases + muletilla 'No sé qué me quiso decir'">Bucle fonético de 3 compases + muletilla 'No sé qué me quiso decir'</option>
+              <option value="Iba abajo al cierre y charoleó giras (GDL, Tlaxcala, Red Bull, BDM)">Iba abajo al cierre y charoleó giras (GDL, Tlaxcala, Red Bull, BDM)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block mono text-[11px] text-slate-300 mb-1">
+              Precisión del modelo: <span id="lblRsiScore" class="theme-accent-text font-bold">5 / 5</span>
+            </label>
+            <input id="rsiInputScore" type="range" min="1" max="5" value="5" class="w-full" />
+          </div>
+
+          <div>
+            <label class="block mono text-[11px] text-slate-300 mb-1">Indicadores observados en tiempo real:</label>
+            <div class="grid grid-cols-2 gap-1.5 text-[11px]">
+              <label class="flex items-center gap-1.5 bg-black/60 p-2 rounded-lg border border-white/10 cursor-pointer">
+                <input type="checkbox" id="chkBeanie" checked class="accent-sky-400" />
+                <span>Quitó gorro / 10cm</span>
+              </label>
+              <label class="flex items-center gap-1.5 bg-black/60 p-2 rounded-lg border border-white/10 cursor-pointer">
+                <input type="checkbox" id="chkMuletilla" checked class="accent-sky-400" />
+                <span>"No sé qué dijo"</span>
+              </label>
+              <label class="flex items-center gap-1.5 bg-black/60 p-2 rounded-lg border border-white/10 cursor-pointer">
+                <input type="checkbox" id="chkEnvies" checked class="accent-sky-400" />
+                <span>Queja envidia / jueces</span>
+              </label>
+              <label class="flex items-center gap-1.5 bg-black/60 p-2 rounded-lg border border-white/10 cursor-pointer">
+                <input type="checkbox" id="chkLie" checked class="accent-sky-400" />
+                <span>Charoleo de viajes</span>
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <label class="block mono text-[11px] text-slate-300 mb-1">Nota de campo:</label>
+            <input id="rsiInputNote" type="text" placeholder="Ej. En Bellas Artes repitió 3 veces la misma terminación..." class="w-full bg-black border border-white/15 rounded-lg px-2.5 py-1.5 text-slate-100 placeholder-slate-500 text-xs" />
+          </div>
+
+          <button type="submit" class="w-full py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold mono text-xs shadow transition">
+            + Guardar Observación en el Modelo
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- 9. 3D ENGINE: LAMINAR CURRENT + 32 NODES + MULTI-AXIS LIVING RINGS    -->
+  <!-- ===================================================================== -->
+  <script>
+    (function() {
+      // -----------------------------------------------------------------------
+      // A. 4 SOBER, REFINED ARCHITECTURAL PALETTES
+      // -----------------------------------------------------------------------
+      const colorPalettes = {
+        arctic: {
+          key: 'arctic',
+          name: 'Ártico & Platino',
+          bgBase: '#06090f',
+          hudBg: 'rgba(11, 16, 26, 0.86)',
+          hudInner: 'rgba(17, 24, 39, 0.90)',
+          hudBorder: 'rgba(148, 163, 184, 0.24)',
+          accentPrimary: '#38bdf8',
+          accentSecondary: '#cbd5e1',
+          coreColor: 0xf1f5f9,
+          coreEmissive: 0x0284c7,
+          currentColorA: 0x7dd3fc,
+          currentColorB: 0xcbd5e1,
+          r1: 0x38bdf8, // Psicología y Psiquiatría (Arctic Blue)
+          r2: 0x818cf8, // Algoritmo (Soft Indigo)
+          r3: 0x2dd4bf, // Evolución 2022-2026 (Teal)
+          r4: 0xfbbf24, // Entorno y Rivales (Warm Amber Gold)
+          r5: 0xcbd5e1  // Extras (Platinum Silver)
+        },
+        champagne: {
+          key: 'champagne',
+          name: 'Grafito & Champán',
+          bgBase: '#09090b',
+          hudBg: 'rgba(16, 16, 20, 0.88)',
+          hudInner: 'rgba(24, 24, 29, 0.92)',
+          hudBorder: 'rgba(212, 212, 216, 0.22)',
+          accentPrimary: '#fcd34d',
+          accentSecondary: '#d4d4d8',
+          coreColor: 0xfef3c7,
+          coreEmissive: 0xd97706,
+          currentColorA: 0xfde68a,
+          currentColorB: 0xe4e4e7,
+          r1: 0xfcd34d,
+          r2: 0xe4e4e7,
+          r3: 0x38bdf8,
+          r4: 0xf59e0b,
+          r5: 0xa1a1aa
+        },
+        sage: {
+          key: 'sage',
+          name: 'Cobalto & Salvia',
+          bgBase: '#040a0c',
+          hudBg: 'rgba(8, 18, 22, 0.87)',
+          hudInner: 'rgba(13, 27, 32, 0.92)',
+          hudBorder: 'rgba(45, 212, 191, 0.24)',
+          accentPrimary: '#2dd4bf',
+          accentSecondary: '#7dd3fc',
+          coreColor: 0xccfbf1,
+          coreEmissive: 0x0d9488,
+          currentColorA: 0x5eead4,
+          currentColorB: 0x7dd3fc,
+          r1: 0x2dd4bf,
+          r2: 0x38bdf8,
+          r3: 0x99f6e4,
+          r4: 0xfbbf24,
+          r5: 0x94a3b8
+        },
+        lavender: {
+          key: 'lavender',
+          name: 'Obsidiana & Índigo',
+          bgBase: '#07070e',
+          hudBg: 'rgba(13, 14, 26, 0.87)',
+          hudInner: 'rgba(20, 21, 38, 0.92)',
+          hudBorder: 'rgba(129, 140, 248, 0.25)',
+          accentPrimary: '#818cf8',
+          accentSecondary: '#c7d2fe',
+          coreColor: 0xe0e7ff,
+          coreEmissive: 0x4f46e5,
+          currentColorA: 0xa5b4fc,
+          currentColorB: 0x7dd3fc,
+          r1: 0x818cf8,
+          r2: 0x38bdf8,
+          r3: 0x2dd4bf,
+          r4: 0xfbbf24,
+          r5: 0xc7d2fe
+        }
+      };
+      const paletteOrder = ['arctic', 'champagne', 'sage', 'lavender'];
+
+      // -----------------------------------------------------------------------
+      // B. 32 NODES ACROSS 5 CONCENTRIC RINGS (RING 1 = 8 CLINICAL NODES)
+      // -----------------------------------------------------------------------
+      const nodesDatabase = [
+        // 0. CENTRAL CORE
+        {
+          id: 'core_shady',
+          ring: 'core',
+          ringLabel: 'NÚCLEO CENTRAL',
+          category: 'FORMULACIÓN INTEGRAL DEL SUJETO',
+          shortLabel: '⚛️ SHADY ARAUJO (NÚCLEO)',
+          title: 'NÚCLEO CENTRAL: Emilio "Shady Araujo" (22 años · Barrio de Tepito)',
+          subtitle: 'Formulación Psicodinámica, Cognitiva y Dimensional · 100% Enfoque en Repercusión en Freestyle',
+          body: 'Sujeto masculino de 22 años cuya identidad y proyecto vital están invertidos al 100% en lograr máxima visibilidad y estatus como Freestyler. Psicológicamente combina alta persistencia competitiva (Responsabilidad 88/100) con una autoestima contingente hipersensible al espejo acústico de la plaza (Neuroticismo reactivo al rechazo grupal 82/100). Cuando domina el ritmo opera con fluidez técnica superior; cuando siente que el público le grita al rival y lo ignora a él (>60 dB), activa mecanismos de defensa de proyección persecutoria, devaluación del oponente e hiper-compensación proxémica a 10 cm.',
+          quote: 'Pulsa el botón "🧠 Psique Clínica" abajo o recorre los 8 nodos del Anillo 1 para explorar su perfilamiento clínico-psicológico completo.',
+          colorHex: 0x38bdf8,
+          dotCss: '#38bdf8'
+        },
+
+        // RING 1: EL ANILLO MÁS CERCANO — PSICOLOGÍA Y PSIQUIATRÍA DEL PERSONAJE (Radius: 2.38 — 8 Nodos)
+        {
+          id: 'r1_personalidad_bigfive',
+          ring: 'r1',
+          angle: 0.0,
+          ringLabel: 'ANILLO 1 · PSICOLOGÍA (EJE I)',
+          category: 'BIG FIVE & AMPD CRITERIO B',
+          shortLabel: '1. Personalidad (Big Five / AMPD)',
+          title: 'Estructura Dimensional de la Personalidad (Modelo Big Five y Criterio B AMPD)',
+          subtitle: 'Alta Persistencia Competitiva (88/100) + Sensibilidad al Rechazo Social (82/100)',
+          body: 'Bajo el Modelo Pentafactorial (FFM) y el modelo dimensional del DSM-5 (AMPD), presenta: (1) Conscienciosidad selectiva muy alta (88/100) volcada al 100% en viajar y lograr repercusión como Freestyler; (2) Afectividad Negativa reactiva (82/100) centrada en la angustia de exclusión grupal; (3) Extraversión escindida (64/100: hiper-dominante en el centro de la rueda pero evitativo en la previa); y (4) Baja Amabilidad competitiva (38/100: suspicacia, bloqueos en redes a críticos como Artezano) que cede únicamente ante sus figuras de apego seguro.',
+          quote: 'Evidencia: 18 batallas (2022–2026) y desplazamientos constantes a GDL, Tlaxcala, Puebla y Edomex.',
+          colorHex: 0x38bdf8,
+          dotCss: '#38bdf8'
+        },
+        {
+          id: 'r1_defensas_yo',
+          ring: 'r1',
+          angle: 0.785,
+          ringLabel: 'ANILLO 1 · PSICODINAMIA (EJE II)',
+          category: 'MECANISMOS DE DEFENSA DEL YO',
+          shortLabel: '2. Defensas: Proyección y Devaluación',
+          title: 'Mecanismos de Defensa del Yo (Escala de Vaillant y Teoría de Kernberg)',
+          subtitle: 'Cómo protege su autoconcepto cuando la plaza no valida sus métricas',
+          body: 'Ante una herida en su autoestima competitiva, su Yo despliega dos defensas primarias: (1) Proyección Persecutoria (atribuir la derrota a un complot externo: "en esta batalla me querían sabotear" vs Koda 2022; "aquí me meten el pie" vs Breix 2026) y (2) Devaluación Defensiva del Objeto Rival (descalificar el ingenio ajeno llamándolo "chistes para la gente" o "rimas preparadas de libreta" vs Artezano y Zett) para conservar intacta su autoimagen de superioridad técnica.',
+          quote: 'Citas: Inferno 2022 (00:10), LFM 2024 vs Artezano (01:25) y Bellas Artes 30-30 vs Breix (02:14).',
+          colorHex: 0x7dd3fc,
+          dotCss: '#7dd3fc'
+        },
+        {
+          id: 'r1_apego_madre',
+          ring: 'r1',
+          angle: 1.57,
+          ringLabel: 'ANILLO 1 · APEGO PRIMARIO',
+          category: 'RELACIONES OBJETALES (BOWLBY)',
+          shortLabel: '3. Objeto Sagrado: Su Madre',
+          title: 'Apego Primario y Objeto Idealizado Intocable: La Madre Trabajadora',
+          subtitle: 'El único estímulo que derrumba la máscara del personaje y detona afecto puro',
+          body: 'En términos de relaciones objetales, su madre representa el objeto interno sagrado y libre de ambivalencia. Mientras que ante ataques hacia su físico o su rap responde con ironía defensiva, cualquier mención a su madre trabajadora (documentado a los 18 años vs Zett en Rematch 2022 y a los 22 años vs SNK en Tlaxcala 2026, cuando SNK presumió haberle comprado casa a su mamá) desactiva todo cálculo escénico y provoca una defensa visceral de su vínculo familiar.',
+          quote: 'Cita (vs SNK 2026, 11:01): "A mi madre le di el amor que necesitaba... ¿para qué comprarle una casa si va a estar vacía?".',
+          colorHex: 0x38bdf8,
+          dotCss: '#38bdf8'
+        },
+        {
+          id: 'r1_psicodinamia_zett',
+          ring: 'r1',
+          angle: 2.356,
+          ringLabel: 'ANILLO 1 · VÍNCULO Y ESCISIÓN',
+          category: 'APEGO ANSIOSO-AMBIVALENTE',
+          shortLabel: '4. Psique vs. Zett (Sumisión/Escisión)',
+          title: 'Psicodinamia de su Relación con Zett: De la Inhibición Afectiva a la Escisión',
+          subtitle: 'Por qué el calambur "Zett / sed" opera como un detonante pavloviano en batalla',
+          body: 'Durante su vínculo con la competidora Zett —donde ella ejercía el rol dominante—, Emilio presentaba una inhibición de la agresión competitiva por temor a perder el objeto amado: en Cuartos de Liga Venom (sep. 2024) ella le exige que no se contenga ("quítate el corazón... ¡pórtate como rapero!") y él confiesa frente al micrófono: "¡Si me saco el corazón te lo termino dando a ti!". Tras la ruptura, opera una defensa de escisión (splitting): el objeto antes idealizado pasa a ser vivido como perseguidor ("por su culpa me odian en mi ciudad" vs Maqui 2026).',
+          quote: 'Verificado en Liga Venom 2024 (02:34–02:58) y Mesa de Piedra 2026 vs Maqui (02:01).',
+          colorHex: 0x0ea5e9,
+          dotCss: '#0ea5e9'
+        },
+        {
+          id: 'r1_ego_detonante_db',
+          ring: 'r1',
+          angle: 3.141,
+          ringLabel: 'ANILLO 1 · REGULACIÓN AFECTIVA',
+          category: 'AUTOESTIMA CONTINGENTE',
+          shortLabel: '5. Herida Narcisista (>60 dB Rival)',
+          title: 'Autoestima Contingente y Desregulación por Privación Acústica (>60 dB)',
+          subtitle: 'Su regulación emocional depende del suministro sonoro de la grada',
+          body: 'Desde la psicología del self (Kohut), el rugido del público funciona como "objeto-self" especular que valida su existencia como Freestyler. Cuando escucha que la plaza estalla (>60 dB) con una rima del oponente y deja sus métricas en silencio, sufre una caída abrupta de suministro narcisista que se traduce en risa nerviosa, retiro del gorro y reclamo airado contra el público capitalino.',
+          quote: 'Trazado desde Shaolin Battles 2023 vs Aldo Camp ("no le dejan gritar") hasta 2026.',
+          colorHex: 0x38bdf8,
+          dotCss: '#38bdf8'
+        },
+        {
+          id: 'r1_coraza_fabulacion',
+          ring: 'r1',
+          angle: 3.927,
+          ringLabel: 'ANILLO 1 · DEFENSA INTERPERSONAL',
+          category: 'EVITACIÓN Y MITOMANÍA TÁCTICA',
+          shortLabel: '6. Escudo Celular y Fabulación',
+          title: 'Racionalización Preventiva (El Celular) y Fabulación Compensatoria en Frío',
+          subtitle: 'Por qué se aísla antes de competir y por qué suelta "mentiras rápidas" en 1 a 1',
+          body: 'En la previa del parque utiliza el teléfono móvil como barrera de evitación social ("auto-sabotaje preventivo / self-handicapping"): al no saludar ni aplaudir a otros, protege su ego anticipadamente por si luego no lo apoyan. En charlas técnicas 1 a 1 en frío (fuera de su vínculo seguro con Crypto), recurre a fabulaciones instrumentales rápidas —como afirmar en la Final de Revolución 2025 que "hizo los 12 pasos" sin haber pisado un anexo— para nivelar asimetrías de estatus.',
+          quote: 'Cita (Final Revolución 2025 vs Garcés, 02:18): "Perdón por no abrirme, no doy tiempo a llegar y saludar".',
+          colorHex: 0x7dd3fc,
+          dotCss: '#7dd3fc'
+        },
+        {
+          id: 'r1_esquemas_beck',
+          ring: 'r1',
+          angle: 4.712,
+          ringLabel: 'ANILLO 1 · MODELO COGNITIVO',
+          category: 'ESQUEMAS DE BECK Y YOUNG',
+          shortLabel: '7. Esquemas Cognitivos (Beck)',
+          title: 'Esquemas Cognitivos Nucleares y Distorsiones de Procesamiento (TCC / Beck)',
+          subtitle: 'Esquema de Desconfianza/Abuso Social + Lectura de Pensamiento',
+          body: 'Su procesamiento de la información social está gobernado por dos esquemas nucleares (Young/Beck): (1) Esquema de Desconfianza ("en mi ciudad me quieren bloquear o meter el pie") y (2) Esquema de Grandiosidad Compensatoria ("como viajo a más estados y hago métricas sin remarcar, soy superior"). Esto genera tres distorsiones cognitivas constantes en sus batallas: lectura de pensamiento ("sé que te caigo mal pero por dentro me respetas" vs Artezano 02:47), personalización del silencio y pensamiento dicotómico.',
+          quote: 'Cita (vs Artezano, LFM 2024, 02:47): "No puede ganarme improvisando... sé que te caigo mal pero por dentro me respeta".',
+          colorHex: 0xbae6fd,
+          dotCss: '#bae6fd'
+        },
+        {
+          id: 'r1_semiologia_mse',
+          ring: 'r1',
+          angle: 5.497,
+          ringLabel: 'ANILLO 1 · SEMIOLOGÍA MSE',
+          category: 'EXAMEN DEL ESTADO MENTAL',
+          shortLabel: '8. Semiología MSE y Neurocognición',
+          title: 'Semiología del Examen del Estado Mental (MSE) en Batalla y Estrés Ejecutivo',
+          subtitle: 'Taquilalia intimidatoria, incongruencia afectiva y perseveración fonética',
+          body: 'En la observación semiológica (MSE) bajo estrés competitivo se registra: (1) Psicomotricidad: paso del rebote rítmico en puntas a la invasión proxémica a 10 cm aprendida en Tepito (sin miopía) y despojo del gorro; (2) Afecto: sonrisa sarcástica incongruente cuando recibe un golpe certero (observada por SNK en 2024: "se ríe por arrogancia"); (3) Habla: taquilalia en doble tempo usada para intimidar (señalada por RC en 2025); y (4) Función ejecutiva: uso de muletilla de latencia ("no sé qué dijo") y perseveración fonética de 3 compases bajo pico de cortisol.',
+          quote: 'Citas de rivales en vivo: SNK (2024: "se ríe por arrogancia" y 2026: "su cortisol llega a las ruinas") y RC (2025: "rapea rápido para espantarnos").',
+          colorHex: 0x38bdf8,
+          dotCss: '#38bdf8'
+        },
+
+        // RING 2: EL ALGORITMO Y ÁRBOL DE DECISIÓN (Radius: 3.55 — 6 Nodos)
+        {
+          id: 'r2_muletilla',
+          ring: 'r2',
+          angle: 0.3,
+          ringLabel: 'ANILLO 2 · ALGORITMO',
+          category: 'TIEMPO DE CÓMPUTO',
+          shortLabel: '"No sé qué me quiso decir"',
+          title: 'Muletilla Algorítmica: "No sé qué es lo que me quiso decir"',
+          subtitle: 'Buffer verbal en el compás 1 para liberar memoria de trabajo (2.2 s)',
+          body: 'Cuando necesita procesar la respuesta antes del cuarto compás, abre descalificando la dicción o coherencia del rival con la misma plantilla verbal: "No sé qué es lo que me quiso decir" / "No sé qué es lo que este rabia piensa que puede decirme".',
+          quote: 'Verificado palabra por palabra vs Breix (01:02), ST (03:01), Kodigo (01:36) y SNK (09:09 y 09:57).',
+          colorHex: 0x818cf8,
+          dotCss: '#818cf8'
+        },
+        {
+          id: 'r2_gorro_10cm',
+          ring: 'r2',
+          angle: 1.347,
+          ringLabel: 'ANILLO 2 · ALGORITMO',
+          category: 'SEÑAL KINÉSICA',
+          shortLabel: 'Síndrome del Gorro (10 cm)',
+          title: 'El "Síndrome del Gorro" y la Invasión Territorial a 10 cm',
+          subtitle: 'Indicador físico exacto de transición de Nivel 3 a Nivel 4/5',
+          body: 'Arranca con gorro o bucket hat puesto cuando se siente en control. En el segundo exacto en que se siente abajo en gritos, sonríe con ironía, se quita el gorro dejando ver el cabello platinado y se pega a 10 cm del rostro rival señalándolo.',
+          quote: 'Documentado con cronómetro en Maqui vs Shady (01:57) y Breix vs Shady (03:04).',
+          colorHex: 0xa5b4fc,
+          dotCss: '#a5b4fc'
+        },
+        {
+          id: 'r2_ruta_a',
+          ring: 'r2',
+          angle: 2.394,
+          ringLabel: 'ANILLO 2 · ÁRBOL (85%)',
+          category: 'RUTA A · EN CONTROL',
+          shortLabel: 'Ruta A (85%): Flow y Doble Tempo',
+          title: 'Ruta A del Árbol (85%): Superioridad en Flow, Métrica y Doble Tempo',
+          subtitle: 'Se activa en N2 con público neutro o beat rápido',
+          body: 'Rebota en puntas, marca el hi-hat con gesto de pistola, encadena doble tempo sin remarcar la terminación (como le señaló RC en 2025) y ataca diciendo que el rival "tiene voz culera", "no tiene tempo ni rango" o que él fluye mejor que los campeones.',
+          quote: 'Cita (vs SNK 2026, 09:20): "Si tú eres tricampeón de tu país, ¿por qué el doble tempo lo hago mejor yo?".',
+          colorHex: 0x818cf8,
+          dotCss: '#818cf8'
+        },
+        {
+          id: 'r2_ruta_b',
+          ring: 'r2',
+          angle: 3.441,
+          ringLabel: 'ANILLO 2 · ÁRBOL (90%)',
+          category: 'RUTA B · DEFENSA EGO',
+          shortLabel: 'Ruta B (90%): "Chistes / Envidia"',
+          title: 'Ruta B del Árbol (90%): Descalificar por "Chistes/Preparadas" y Acusar Envidia',
+          subtitle: 'Se activa en N4 cuando la plaza explota con una rima rival',
+          body: 'Acusa automáticamente al rival de "hacer chistes para la gente" (vs Breix) o de "traer rimas preparadas de libreta" (vs Artezano y Zett), seguido del reclamo de que la plaza le mete el pie por envidia.',
+          quote: 'Cita (vs Breix 02:14): "Me puse a hacer flow en un trap y tienes que hacer chistes... aquí me meten el pie".',
+          colorHex: 0x6366f1,
+          dotCss: '#6366f1'
+        },
+        {
+          id: 'r2_ruta_c',
+          ring: 'r2',
+          angle: 4.488,
+          ringLabel: 'ANILLO 2 · ÁRBOL (80%)',
+          category: 'RUTA C · CURRÍCULUM',
+          shortLabel: 'Ruta C (80%): Charoleo Viajes',
+          title: 'Ruta C del Árbol (80%): Charoleo de Viajes, Sedes y Currículum',
+          subtitle: 'Se activa en N5 cuando va perdiendo al cierre de la batalla',
+          body: 'Deja de contestar el argumento presente y recita su kilometraje para validar su jerarquía: viajes a Guadalajara, Tlaxcala, Puebla, Red Bull, Camp League, 4 BDM y 2 Supremacía.',
+          quote: 'Cita (vs Breix 03:28): "Fui a Camp League, fui a BDM... 4 BDM y 2 Supremacía".',
+          colorHex: 0xa5b4fc,
+          dotCss: '#a5b4fc'
+        },
+        {
+          id: 'r2_ruta_d',
+          ring: 'r2',
+          angle: 5.535,
+          ringLabel: 'ANILLO 2 · ÁRBOL (78%)',
+          category: 'RUTA D · BUCLE 3X / DJ',
+          shortLabel: 'Ruta D (78%): Bucle 3x + Corte DJ',
+          title: 'Ruta D del Árbol (78%): Bucle de Paronomasia 3x y Cortes al DJ',
+          subtitle: 'Se activa en N3 cuando busca forzar un golpe técnico',
+          body: 'Toma una raíz fonética y la repite 3 compases seguidos aunque sacrifique sentido ("pregrada, se degrada, no es grada, granada" vs Maqui; "cabras, Cabral, cabrá" vs Breix) o pide cortes seguidos al DJ en el 4x4 ("regálame otro corte otra vez" vs ST).',
+          quote: 'Contra Kodigo (2026) y SNK (2026: "Arquímedes / aquí me ves / aquí me des") repite el mismo bucle.',
+          colorHex: 0xc7d2fe,
+          dotCss: '#c7d2fe'
+        },
+
+        // RING 3: EVOLUCIÓN A TRAVÉS DE LOS AÑOS 2022–2026 (Radius: 4.75 — 5 Nodos)
+        {
+          id: 'r3_2022',
+          ring: 'r3',
+          angle: 0.15,
+          ringLabel: 'ANILLO 3 · EVOLUCIÓN 2022',
+          category: 'ETAPA 1 (18 AÑOS)',
+          shortLabel: '2022: Métricas y Rematch c/ Zett',
+          title: 'Evolución 2022 (18 años): Métricas sin Remarcar y Semifinal contra Zett',
+          subtitle: 'Inferno Freestyle (vs Koda) y Rematch Revolución (vs Zett)',
+          body: 'En 2022 se hizo notar en Monumento a la Revolución por las batallas Face to Face. Buscaba diferenciarse haciendo "métricas sin remarcar la terminación" (vs Koda 01:13) y ya mostraba el rasgo de sentirse saboteado ("me querían sabotear"). En septiembre de 2022 enfrentó a Zett en semifinales de Rematch.',
+          quote: 'Cita (vs Koda Jul 2022, 00:10): "En esta batalla me querían sabotear... para ver las métricas sin remarcar la terminación".',
+          colorHex: 0x2dd4bf,
+          dotCss: '#2dd4bf'
+        },
+        {
+          id: 'r3_2023',
+          ring: 'r3',
+          angle: 1.406,
+          ringLabel: 'ANILLO 3 · EVOLUCIÓN 2023',
+          category: 'ETAPA 2 (19 AÑOS)',
+          shortLabel: '2023: Shaolin CDMX y Hakai 3vs3',
+          title: 'Evolución 2023 (19 años): Doble Tempo en Shaolin Battles y Final Hakai',
+          subtitle: 'Cruces contra Aldo Camp, AD (7 DRB) y Final 3vs3 junto a Maquiavélico',
+          body: 'En 2023 acelera la velocidad de su rapeo y llega a finales de plaza como Hakai 3vs3 (haciendo equipo con Maquiavélico y Fat Tony frente a Potencia, Zett y Artezano). En Shaolin Battles (vs Aldo Camp) aparece por primera vez su queja de que el público no le grita.',
+          quote: 'Cita (vs Aldo Camp Ago 2023, 01:48): "No le dejan gritar, no hay pedo, igualmente voy a matar".',
+          colorHex: 0x14b8a6,
+          dotCss: '#14b8a6'
+        },
+        {
+          id: 'r3_2024',
+          ring: 'r3',
+          angle: 2.663,
+          ringLabel: 'ANILLO 3 · EVOLUCIÓN 2024',
+          category: 'ETAPA 3 (20 AÑOS)',
+          shortLabel: '2024: Venom c/ Zett · LFM · BDM',
+          title: 'Evolución 2024 (20 años): Confesión a Zett en Liga Venom y Salto a Tarimas',
+          subtitle: 'Liga Venom (vs Zett), LFM (vs Artezano), Camp League (vs SNK) y BDM Puebla',
+          body: 'Año clave: en Liga Venom (sep. 2024) tiene el cruce emocional con Zett donde se rehúsa a insultarla ("si me saco el corazón te lo termino dando a ti"). Pelea con Artezano en LFM por bloquear haters en redes, debuta en escenario grande contra Damián SNK y empieza a viajar fuera (BDM Puebla vs Jonas).',
+          quote: 'Cita (vs Artezano May 2024, 00:22): "Los que me odian, me odian sin conocerme... por eso te tengo bloqueado".',
+          colorHex: 0x5eead4,
+          dotCss: '#5eead4'
+        },
+        {
+          id: 'r3_2025',
+          ring: 'r3',
+          angle: 3.92,
+          ringLabel: 'ANILLO 3 · EVOLUCIÓN 2025',
+          category: 'ETAPA 4 (21 AÑOS)',
+          shortLabel: '2025: Campeón Revolución · GDL · RC',
+          title: 'Evolución 2025 (21 años): Campeón Death Match, Ruta GDL y Cruce con RC',
+          subtitle: 'Final Revolución (vs Garcés), Club de la Pelea GDL y Batalla vs RC',
+          body: 'En abril de 2025 gana el Death Match de Monumento a la Revolución ($2,000 MXN frente a Garcés), consolida sus viajes constantes a Guadalajara (Club de la Pelea GDL vs Sangre Azul) y en noviembre enfrenta al histórico RC en Neza/CDMX, plantándole cara en doble tempo.',
+          quote: 'Cita (vs RC Nov 2025, 01:38): "Quiere desaparecerme y es cuando más doy la cara, esto es como el problema de Guadalajara".',
+          colorHex: 0x2dd4bf,
+          dotCss: '#2dd4bf'
+        },
+        {
+          id: 'r3_2026',
+          ring: 'r3',
+          angle: 5.176,
+          ringLabel: 'ANILLO 3 · EVOLUCIÓN 2026',
+          category: 'ETAPA 5 (22 AÑOS)',
+          shortLabel: '2026: Exhibiciones SNK/Kodigo y MDP',
+          title: 'Evolución 2026 (22 años): Exhibiciones Internacionales y Máxima Repercusión',
+          subtitle: 'Sangre x Sangre Tlaxcala (vs SNK), Chess Battles (vs Kodigo), MDP y Bellas Artes',
+          body: 'A sus 22 años alcanza su versión más agresiva y enfocada al 100% en tener repercusión nacional en el Freestyle: sostiene exhibiciones de 15 minutos contra el tricampeón SNK en Tlaxcala, enfrenta a Kodigo en Chess Battles, compite en BDM Edomex con Crypto y protagoniza las batallas más tensas de Mesa de Piedra y Bellas Artes 30-30.',
+          quote: 'Cita (vs Kodigo Ago 2026, 01:31): "Mírame a los ojitos MC, a mí nunca en la vida me va a ganar el Gazir de Ecatepec".',
+          colorHex: 0x99f6e4,
+          dotCss: '#99f6e4'
+        },
+
+        // RING 4: ENTORNO, ALIANZAS Y SUS 6 RIVALES DISTRIBUIDOS (Radius: 5.95 — 8 Nodos)
+        {
+          id: 'r4_crypto',
+          ring: 'r4',
+          angle: 0.0,
+          ringLabel: 'ANILLO 4 · ENTORNO',
+          category: 'BASE SEGURA DE APEGO',
+          shortLabel: 'Aliado: Crypto (Zona Segura)',
+          title: 'Su Amistad con Crypto: El Único Espacio donde Baja la Guardia',
+          subtitle: 'Compañero en Cyphers 30-30 Bellas Artes y Regional BDM Edomex 2026',
+          body: 'Mientras que frente a otros competidores mantiene una coraza defensiva o inventa mentiras rápidas en frío, cuando está junto a su amigo Crypto en el parque se relaja, conversa de temas personales con honestidad y muestra su lado leal.',
+          quote: 'Verificado en Cyphers 30-30 Edición Trap y Regional BDM Edomex 2026.',
+          colorHex: 0xfbbf24,
+          dotCss: '#fbbf24'
+        },
+        {
+          id: 'r4_team_mesa',
+          ring: 'r4',
+          angle: 0.785,
+          ringLabel: 'ANILLO 4 · ALIANZAS',
+          category: 'EQUIPO Y DUPLAS',
+          shortLabel: 'Team Mesa (Parka & Chino)',
+          title: 'Alianzas en el Circuito: "Team Mesa" (Parka Métrica), Chino Bellako y Soni Montiel',
+          subtitle: 'La paradoja entre denunciar favoritismo y ser parte del equipo oficial en MDP',
+          body: 'Aunque en sus derrotas suele reclamar que los jueces o la organización favorecen al rival, en Mesa de Piedra forma parte del "Team Mesa" respaldado por el juez Parka Métrica, además de hacer dupla constante con Chino Bellako y con Soni Montiel (BDM Duplas 2024).',
+          quote: 'Cita rival (MDP Duplas 01:51): "Si están aquí es por la organización".',
+          colorHex: 0xf59e0b,
+          dotCss: '#f59e0b'
+        },
+        {
+          id: 'r4_rival_zett',
+          ring: 'r4',
+          angle: 1.57,
+          ringLabel: 'ANILLO 4 · RIVAL 1',
+          category: 'HISTORIAL VS. ZETT',
+          shortLabel: 'Rival 1: Zett (Rematch y Venom)',
+          title: 'Rival Pasada: Zett (Semifinal Rematch 2022, Final Hakai 2023 y Liga Venom 2024)',
+          subtitle: 'El único rival ante quien desarma su agresividad y queda expuesto emocionalmente',
+          body: 'En Rematch Revolución (sep. 2022) Zett le recrimina: "tú por unas Face to Face te hiciste conocido, nosotras hicimos las vistas, agradéceme a mí". Dos años después, en Liga Venom (sep. 2024), Zett lo regaña en pleno 4x4 por no querer atacarla ("quítate el corazón, empieza a hacer free... pórtate como rapero") y él confiesa que si se saca el corazón se lo termina dando a ella.',
+          quote: 'Cita de Zett a Shady (Liga Venom 2024, 02:47): "Me gusta un chingo que seas caballero, pero venimos a batallas: ¡pórtate como rapero!".',
+          colorHex: 0xfcd34d,
+          dotCss: '#fcd34d'
+        },
+        {
+          id: 'r4_rival_artezano',
+          ring: 'r4',
+          angle: 2.356,
+          ringLabel: 'ANILLO 4 · RIVAL 2',
+          category: 'HISTORIAL VS. ARTEZANO',
+          shortLabel: 'Rival 2: Artezano (LFM 2024)',
+          title: 'Rival Pasado: Artezano (Final Hakai 2023 y Cuartos LFM CDMX 2024)',
+          subtitle: 'El rival que desnuda cómo gestiona el odio en redes sociales bloqueando gente',
+          body: 'En LFM CDMX: Road to Spain (mayo 2024), Artezano le lanza una radiografía exacta de su relación con la escena capitalina: "Te volviste un humano insoportable... los que me odian, me odian sin conocerme; los que te odian a ti te topan perfectamente" y exhibe que Shady lo tiene bloqueado en redes. Shady admite el bloqueo ("por eso te tengo bloqueado, pinche hater") y lo acusa de usar rimas preparadas.',
+          quote: 'Cita (Artezano vs Shady, LFM 2024, 01:16): "No se las dedico a nadie, por eso te tengo bloqueado... ya no con la rima preparada".',
+          colorHex: 0xfbbf24,
+          dotCss: '#fbbf24'
+        },
+        {
+          id: 'r4_rival_maqui',
+          ring: 'r4',
+          angle: 3.141,
+          ringLabel: 'ANILLO 4 · RIVAL 3',
+          category: 'HISTORIAL VS. MAQUI',
+          shortLabel: 'Rival 3: Maqui (De Aliado a Rival)',
+          title: 'Rival Clave: Maqui / Maquiavélico (De Compañero en 2023 a Verdugo en 2026)',
+          subtitle: 'Su excompañero de trío en Hakai 2023 que conoce todos sus puntos ciegos',
+          body: 'En noviembre de 2023 hicieron equipo juntos (Maquiavélico, Fat Tony y Shady) en la Gran Final de Hakai 3vs3. Precisamente por haber sido cercanos y haber clasificado a Red Bull CDMX, en Mesa de Piedra (2026) Maqui sabe cómo desestabilizarlo usando el juego de palabras con "Zett / sed", logrando que Shady se quite el gorro al minuto 01:57 y culpe a su ex del rechazo del público.',
+          quote: 'Cita (Maqui vs Shady, MDP 2026, 02:01): "Por su culpa me odian, esta es mi ciudad y por su culpa no me apoyan".',
+          colorHex: 0xf59e0b,
+          dotCss: '#f59e0b'
+        },
+        {
+          id: 'r4_rival_breix_st',
+          ring: 'r4',
+          angle: 3.927,
+          ringLabel: 'ANILLO 4 · RIVAL 4',
+          category: 'RIVALES DE GRADA',
+          shortLabel: 'Rival 4: Breix · ST · Aldo Camp',
+          title: 'Rivales de Grada: Aldo Camp (2023), Breix (30-30) y ST (MDP x DEM)',
+          subtitle: 'Competidores carismáticos o ingeniosos que le ganan el grito de la plaza',
+          body: 'Representan el arquetipo que más le cuesta manejar psicológicamente: rivales cuyos chistes o punchlines hacen explotar al público local. Contra Aldo Camp (Shaolin 2023) nace su queja "no le dejan gritar"; contra Breix (Bellas Artes 30-30) se enoja porque le festejan chistes ("me puse a hacer flow en un trap y tienes que hacer chistes"); y contra ST recurre a pedir cortes repetidos al DJ.',
+          quote: 'Cita (vs Breix, Bellas Artes 30-30, 03:04): Se quita el gorro, invade a 10 cm y recita sus torneos.',
+          colorHex: 0xfde68a,
+          dotCss: '#fde68a'
+        },
+        {
+          id: 'r4_rival_garces_sangre',
+          ring: 'r4',
+          angle: 4.712,
+          ringLabel: 'ANILLO 4 · RIVAL 5',
+          category: 'GUERRA DE CALLE 2025',
+          shortLabel: 'Rival 5: Garcés · Sangre Azul',
+          title: 'Rivales de Calle y Gira (2025): Garcés (Revolución) y Sangre Azul (GDL / Chess)',
+          subtitle: 'Sus batallas de consolidación física en CDMX y apertura de plaza en Guadalajara',
+          body: 'En abril de 2025 enfrenta dos veces a Sangre Azul (en Chess Battles CDMX y luego en Club de la Pelea Guadalajara), abriendo su ruta tapatía. Ese mismo mes vence a Garcés en la Final del Death Match en Monumento a la Revolución ($2,000 MXN), donde Garcés lo presiona por su actitud distante en el parque y Shady suelta la mentira táctica de haber hecho "los 12 pasos".',
+          quote: 'Cita (Final vs Garcés 2025, 02:18): "Perdón por no abrirme, no doy tiempo a llegar y saludar".',
+          colorHex: 0xfbbf24,
+          dotCss: '#fbbf24'
+        },
+        {
+          id: 'r4_rival_snk_rc_kodigo',
+          ring: 'r4',
+          angle: 5.497,
+          ringLabel: 'ANILLO 4 · RIVAL 6',
+          category: 'CHOQUE CON LEYENDAS',
+          shortLabel: 'Rival 6: SNK · RC · Kodigo',
+          title: 'Rivales de Élite e Internacionales: Damián SNK (2024/2026), RC (2025) y Kodigo (2026)',
+          subtitle: 'Cómo se transforma cuando enfrenta a tricampeones y veteranos consagrados',
+          body: 'Frente a leyendas busca el clip viral: en nov. 2025 RC lo radiografía en Neza diciéndole "rapea rápido para espantarnos, yo también sé el truco". En ago. 2026 encara a Kodigo en Chess Battles ("a mí nunca en la vida me va a ganar el Gazir de Ecatepec"). Y con el tricampeón costarricense SNK pasa de un cruce corto en Camp League 2024 a una guerra de 15 minutos en Tlaxcala 2026 donde defiende a su madre.',
+          quote: 'Cita de RC a Shady (Nov 2025, 00:27): "Rapea rápido para espantarnos... tú sí sabes trucos porque te los enseño".',
+          colorHex: 0xf59e0b,
+          dotCss: '#f59e0b'
+        },
+
+        // RING 5: EXTRAS, SÍMBOLOS Y CULTURA POP (Radius: 7.10 — 4 Nodos)
+        {
+          id: 'r5_tatuaje_placa',
+          ring: 'r5',
+          angle: 0.9,
+          ringLabel: 'ANILLO 5 · EXTRAS',
+          category: 'SIMBOLOGÍA FÍSICA',
+          shortLabel: 'Tatuaje Cruz + Placa Militar',
+          title: 'Tatuaje de Cruz (Oreja Izquierda), Placa Militar y Cabello Platinado',
+          subtitle: 'Identidad visual inspirada en Slim Shady / Tyler The Creator + culpa católica',
+          body: 'Porta una cruz/espada tatuada detrás de la oreja izquierda y placa militar metálica al cuello. Su vocabulario bajo presión recurre constantemente a "pecado, cruz, infierno, templo y Dios".',
+          quote: 'Visible en PH vs Shady (GDL 00:11) y Cyphers 30-30 (15:18).',
+          colorHex: 0xcbd5e1,
+          dotCss: '#cbd5e1'
+        },
+        {
+          id: 'r5_habitos_cannabis',
+          ring: 'r5',
+          angle: 2.47,
+          ringLabel: 'ANILLO 5 · EXTRAS',
+          category: 'HÁBITOS VERIFICADOS',
+          shortLabel: 'Cannabis Reciente (Sin Anexo)',
+          title: 'Hábitos Personales: Consumo Reciente de Cannabis y Cero Historial de Anexo',
+          subtitle: 'Desmentida la barra de los "12 pasos" contra Garcés (fue recurso táctico)',
+          body: 'Empezó recientemente a consumir marihuana llevándolo con tranquilidad ("en las mañanas no ensayo... me doy un gallo" vs Artezano 02:07). Nunca ha estado internado en un anexo; su frase sobre los "12 pasos" en Revolución fue una invención táctica del momento.',
+          quote: 'Verificado por observación directa de campo + LFM CDMX vs Artezano (02:07).',
+          colorHex: 0x94a3b8,
+          dotCss: '#94a3b8'
+        },
+        {
+          id: 'r5_gaming_wwe_anime',
+          ring: 'r5',
+          angle: 4.04,
+          ringLabel: 'ANILLO 5 · EXTRAS',
+          category: 'ARSENAL SUBCONSCIENTE',
+          shortLabel: 'CoD Gun Game · WWE · Anime · Fútbol',
+          title: 'Arsenal Subconsciente: Call of Duty, WWE, Anime y Fútbol Europeo/Liga MX',
+          subtitle: 'Las 4 fuentes de donde extrae sus metáforas automáticas al improvisar',
+          body: 'En videojuegos cita Call of Duty ("degradar tu rifle como en Juego de Armas") y Minecraft; en lucha libre cita a Kurt Angle, Triple H y La Parka; en anime a Dragon Ball, Death Note y Attack on Titan; y en fútbol a Keylor Navas, Raúl Jiménez, Álvaro Fidalgo y Messi.',
+          quote: 'Citas en Maqui (01:39), Aldo Camp (00:08) y SNK Tlaxcala (09:05: "Soy Álvaro Fidalgo, soy el centro de América").',
+          colorHex: 0xe2e8f0,
+          dotCss: '#e2e8f0'
+        },
+        {
+          id: 'r5_herencia_musical',
+          ring: 'r5',
+          angle: 5.61,
+          ringLabel: 'ANILLO 5 · EXTRAS',
+          category: 'CULTURA MUSICAL',
+          shortLabel: 'Santana · Sinatra · Luis Miguel · Duki',
+          title: 'Bagaje Musical en Casa: De Carlos Santana y Sinatra a Duki y Tyler',
+          subtitle: 'Referencias musicales familiares que usa como comparaciones de grandeza',
+          body: 'Sus comparaciones musicales mezclan clásicos heredados en casa como Carlos Santana ("un piano y seis guitarras"), Jimi Hendrix, Frank Sinatra y Luis Miguel ("me llaman Luis Miguel cuando estoy triste, hago de una tristeza un hit mundial" vs SNK 01:38) con referentes urbanos como Eminem, Duki y Tyler The Creator.',
+          quote: 'Documentado en Cyphers 30-30 (11:27), Breix (01:10) y SNK Tlaxcala (01:38).',
+          colorHex: 0xf1f5f9,
+          dotCss: '#f1f5f9'
+        }
+      ];
+
+      // -----------------------------------------------------------------------
+      // C. TABULADOR LEVELS N1-N5 (BEHAVIORAL & CLINICAL READING)
+      // -----------------------------------------------------------------------
+      const tabuladorLevels = [
+        {
+          level: 1,
+          code: "Nivel 1 (N1 · Previa)",
+          db: "10 – 20 dB (Parque)",
+          gorro: "Puesto (Cerrado)",
+          dist: "150 cm (Banca)",
+          muletilla: "Celular / Fabulación",
+          prob: "92.0%",
+          route: "Aislamiento Preventivo",
+          desc: "Defensa anticipatoria: se aísla en el celular sin aplaudir a otros; en charla 1 a 1 suelta mentiras rápidas (salvo en su base segura con Crypto)."
+        },
+        {
+          level: 2,
+          code: "Nivel 2 (N2 · Eutimia)",
+          db: "20 – 40 dB (Neutro)",
+          gorro: "Puesto (Cómodo)",
+          dist: "120 cm (Centro)",
+          muletilla: "Gesto Pistola / Taquilalia",
+          prob: "85.0%",
+          route: "Ruta A (Flow / Métrica)",
+          desc: "En control: rebota en puntas marcando el hi-hat, despliega doble tempo intimidatorio sin remarcar terminación y devalúa la voz rival."
+        },
+        {
+          level: 3,
+          code: "Nivel 3 (N3 · Sobrecarga)",
+          db: "40 – 60 dB (Competido)",
+          gorro: "Puesto (Atento)",
+          dist: "100 cm (Diagonal)",
+          muletilla: "'No sé qué dijo' + 3x",
+          prob: "78.0%",
+          route: "Ruta D (Perseveración 3x)",
+          desc: "Activa el buffer de latencia ('No sé qué me quiso decir'), pide cortes al DJ y entra en perseveración fonética de 3 compases."
+        },
+        {
+          level: 4,
+          code: "Nivel 4 (N4 · Herida Ego)",
+          db: "60 – 80 dB (Grito al Rival)",
+          gorro: "Se lo quita (Fricción)",
+          dist: "35 cm (Presión)",
+          muletilla: "Sonrisa Sarcástica / Queja",
+          prob: "90.0%",
+          route: "Ruta B (Proyección / Devaluación)",
+          desc: "Herida narcisista por grito al rival o calambur con Zett: sonrisa incongruente, se quita el gorro y proyecta ('hacen chistes / me tienen envidia')."
+        },
+        {
+          level: 5,
+          code: "Nivel 5 (N5 · Quiebre)",
+          db: "80 – 100 dB (Hostil)",
+          gorro: "Fuera (Formación Reactiva)",
+          dist: "10 cm (Invasión Cara)",
+          muletilla: "Disfonía / Charoleo",
+          prob: "82.0%",
+          route: "Ruta C (Giras / Objeto Sagrado)",
+          desc: "Hiper-compensación proxémica a 10 cm con voz rasgada; defiende a su madre (objeto sagrado) o recita su currículum de viajes (GDL, Tlaxcala, BDM)."
+        }
+      ];
+
+      const isMobileScreen = () => window.innerWidth < 768;
+
+      const state = {
+        themeKey: 'arctic',
+        selectedNodeId: 'core_shady',
+        ringFilter: 'all',
+        hudVisible: true,
+        labelsVisible: true,
+        sheetExpanded: !isMobileScreen(),
+        telemetryOpen: false,
+        speedMult: 1.0,
+        currentFlowSpeed: 1.0,
+        targetYaw: -0.32,
+        targetPitch: 0.28,
+        yaw: -0.32,
+        pitch: 0.28,
+        cameraZoom: isMobileScreen() ? 17.8 : 15.0,
+        targetZoom: isMobileScreen() ? 17.8 : 15.0,
+        tabLevel: 3,
+        rsiCommits: [
+          "Calibración RSI v5.0 (Perfil Clínico-Psicológico Ultra-Extenso · 32 Nodos): Expandido el Anillo 1 (el más cercano al núcleo) a 8 nodos clínicos utilizando Psicología de la Personalidad (Big Five / AMPD), Psicodinamia del Yo (Vaillant / Kernberg), Teoría del Apego (Bowlby), Esquemas Cognitivos (Beck) y Semiología del Examen del Estado Mental (MSE)."
+        ]
+      };
+
+      const sheetBodyEl = document.getElementById('sheetExpandableBody');
+      const sheetIconEl = document.getElementById('sheetToggleIcon');
+      const sheetTextEl = document.getElementById('sheetToggleText');
+
+      function setSheetExpanded(val) {
+        state.sheetExpanded = val;
+        if (val) {
+          sheetBodyEl.classList.remove('hidden');
+          sheetIconEl.textContent = '▼';
+          sheetTextEl.textContent = 'Ocultar';
+        } else {
+          sheetBodyEl.classList.add('hidden');
+          sheetIconEl.textContent = '▲';
+          sheetTextEl.textContent = 'Ficha';
+        }
+      }
+      setSheetExpanded(state.sheetExpanded);
+
+      // -----------------------------------------------------------------------
+      // D. THREE.JS + WEBXR SCENE: REAL SPATIAL SCALE (0.1x @ Y:1.2m, Z:-1.0m)
+      // -----------------------------------------------------------------------
+      const canvas = document.getElementById('atomCanvas');
+      const labelsContainer = document.getElementById('labelsContainer');
+
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "high-performance" });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.xr.enabled = true;
+
+      // Native Three.js ARButton builder with DOM Overlay + Automatic VR Fallback for Meta Quest 3
+      const ARButton = {
+        createButton: function(rendererInstance, sessionInit = {}) {
+          const button = document.createElement('button');
+          button.id = 'ARButton';
+          const xrStatusText = document.getElementById('xrStatusText');
+          const xrStatusDot = document.getElementById('xrStatusDot');
+
+          function setupSessionButton(mode, labelText) {
+            let currentSession = null;
+            async function onSessionStarted(session) {
+              session.addEventListener('end', onSessionEnded);
+              rendererInstance.xr.setReferenceSpaceType('local-floor');
+              await rendererInstance.xr.setSession(session);
+              button.textContent = '✕ SALIR DE REALIDAD MIXTA (QUEST 3)';
+              if (mode === 'immersive-ar') {
+                document.body.classList.add('xr-passthrough-active');
+                rendererInstance.setClearColor(0x000000, 0);
+              }
+              state.holo3dVisible = true;
+              updateHoloToggleBtn();
+              if (xrStatusText) xrStatusText.textContent = 'QUEST 3 MR ACTIVO (1.4m)';
+              if (xrStatusDot) xrStatusDot.className = 'w-2 h-2 rounded-full bg-sky-400 animate-ping';
+              currentSession = session;
+            }
+            function onSessionEnded() {
+              if (currentSession) {
+                currentSession.removeEventListener('end', onSessionEnded);
+                currentSession = null;
+              }
+              button.textContent = labelText;
+              document.body.classList.remove('xr-passthrough-active');
+              if (xrStatusText) xrStatusText.textContent = `XR ${state.xrScale.toFixed(2)}x (Y:${state.xrPosY.toFixed(1)}m · Z:${state.xrPosZ.toFixed(1)}m)`;
+              if (xrStatusDot) xrStatusDot.className = 'w-2 h-2 rounded-full bg-teal-400 animate-pulse';
+            }
+            button.textContent = labelText;
+            button.addEventListener('click', function() {
+              if (currentSession === null) {
+                navigator.xr.requestSession(mode, sessionInit).then(onSessionStarted).catch((err) => {
+                  console.warn('WebXR session error with full init, retrying minimal local-floor:', err);
+                  navigator.xr.requestSession(mode, { optionalFeatures: ['local-floor'] }).then(onSessionStarted).catch((err2) => {
+                    console.warn('WebXR fallback error:', err2);
+                  });
+                });
+              } else {
+                currentSession.end();
+              }
+            });
+          }
+
+          function showXRPreviewMode() {
+            button.textContent = '🥽 SIMULAR VISTA HOLOGRÁFICA QUEST 3';
+            button.title = 'En PC/Móvil activa los paneles holográficos 3D espaciales. En Meta Quest Browser (vía HTTPS) entra directo en Passthrough AR.';
+            button.addEventListener('click', function() {
+              state.holo3dVisible = !state.holo3dVisible;
+              updateHoloToggleBtn();
+              state.targetYaw = -0.18;
+              state.targetPitch = 0.12;
+              state.targetZoom = isMobileScreen() ? 19.5 : 16.5;
+            });
+          }
+
+          if ('xr' in navigator) {
+            navigator.xr.isSessionSupported('immersive-ar').then(function(arSupported) {
+              if (arSupported) {
+                setupSessionButton('immersive-ar', '🥽 ENTRAR EN AR (QUEST 3 PASSTHROUGH)');
+              } else {
+                navigator.xr.isSessionSupported('immersive-vr').then(function(vrSupported) {
+                  if (vrSupported) {
+                    setupSessionButton('immersive-vr', '🥽 ENTRAR EN VR (QUEST 3)');
+                  } else {
+                    showXRPreviewMode();
+                  }
+                }).catch(showXRPreviewMode);
+              }
+            }).catch(showXRPreviewMode);
+          } else {
+            showXRPreviewMode();
+          }
+          return button;
+        }
+      };
+
+      // Append ARButton with dom-overlay pointing to document.body so Tailwind HUD coexists with Quest Passthrough
+      const arButtonEl = ARButton.createButton(renderer, {
+        optionalFeatures: ['dom-overlay', 'local-floor'],
+        domOverlay: { root: document.body }
+      });
+      document.body.appendChild(arButtonEl);
+
+      // Extend state with WebXR spatial parameters (1 unit = 1 meter -> 0.1 scale = ~1.42m diameter)
+      state.xrScale = 0.1;
+      state.xrPosY = 1.2;
+      state.xrPosZ = -1.0;
+      state.xrAutoModal = false;
+      state.hoveredNodeId = null;
+
+      const scene = new THREE.Scene();
+      // Near clipping plane at 0.01m (1cm) for close inspection in Mixed Reality and scaled 0.1x world
+      const camera = new THREE.PerspectiveCamera(40, 1, 0.01, 100);
+      camera.position.set(0, state.xrPosY, state.xrPosZ + state.cameraZoom * state.xrScale);
+      camera.lookAt(0, state.xrPosY, state.xrPosZ);
+
+      scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+      const mainLight = new THREE.DirectionalLight(0xffffff, 1.25);
+      mainLight.position.set(0.7, 2.3, -0.1);
+      scene.add(mainLight);
+
+      // Master WebXR Spatial Group: groups the entire 3D scene, scaled to 0.1 (1.42m diameter) at (0, 1.2, -1.0)
+      const xrSceneGroup = new THREE.Group();
+      xrSceneGroup.scale.set(state.xrScale, state.xrScale, state.xrScale);
+      xrSceneGroup.position.set(0, state.xrPosY, state.xrPosZ);
+      scene.add(xrSceneGroup);
+
+      const coreGlowLight = new THREE.PointLight(0x38bdf8, 2.2, 4.0);
+      xrSceneGroup.add(coreGlowLight);
+
+      // Subtle background ambient dust inside the spatial group
+      const starGeo = new THREE.BufferGeometry();
+      const starPos = new Float32Array(260 * 3);
+      for (let i = 0; i < 260 * 3; i += 3) {
+        starPos[i]     = (Math.random() - 0.5) * 65;
+        starPos[i + 1] = (Math.random() - 0.5) * 42;
+        starPos[i + 2] = -10 - Math.random() * 28;
+      }
+      starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+      xrSceneGroup.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0x94a3b8, size: 0.006, transparent: true, opacity: 0.35 })));
+
+      const atomRoot = new THREE.Group();
+      xrSceneGroup.add(atomRoot);
+
+      // CENTRAL CORE + DELICATE LAMINAR CURRENT ("CORRIENTE FINA Y FLUIDA")
+      const coreGroup = new THREE.Group();
+      atomRoot.add(coreGroup);
+
+      // 1. Sober Polished Core Sphere
+      const coreSphereMat = new THREE.MeshStandardMaterial({
+        color: 0xf1f5f9,
+        emissive: 0x0284c7,
+        emissiveIntensity: 0.65,
+        roughness: 0.22,
+        metalness: 0.28
+      });
+      const coreSphereMesh = new THREE.Mesh(new THREE.SphereGeometry(0.84, 36, 36), coreSphereMat);
+      coreGroup.add(coreSphereMesh);
+
+      // 2. Delicate Laminar Streams ("Corriente Fina") flowing smoothly around the sphere
+      const currentStreamsGroup = new THREE.Group();
+      coreGroup.add(currentStreamsGroup);
+
+      const currentRibbons = [];
+      const streamCount = 6;
+      for (let s = 0; s < streamCount; s++) {
+        const curvePoints = [];
+        const segs = 96;
+        const baseRadius = 1.02 + (s % 3) * 0.14;
+        const waveAmp = 0.12 + (s % 2) * 0.06;
+        const waveFreq = 3 + (s % 3);
+        const phaseShift = (s / streamCount) * Math.PI * 2;
+
+        for (let j = 0; j <= segs; j++) {
+          const theta = (j / segs) * Math.PI * 2;
+          const r = baseRadius + Math.sin(theta * waveFreq + phaseShift) * 0.05;
+          const x = Math.cos(theta) * r;
+          const y = Math.sin(theta) * r;
+          const z = Math.cos(theta * waveFreq + phaseShift) * waveAmp;
+          curvePoints.push(new THREE.Vector3(x, y, z));
+        }
+
+        const streamGeo = new THREE.BufferGeometry().setFromPoints(curvePoints);
+        const streamMat = new THREE.LineBasicMaterial({
+          color: (s % 2 === 0) ? 0x7dd3fc : 0xcbd5e1,
+          transparent: true,
+          opacity: 0.42
+        });
+        const streamLine = new THREE.Line(streamGeo, streamMat);
+        streamLine.rotation.set(
+          (s * 0.52),
+          (s * 0.68),
+          (s * 0.35)
+        );
+        currentStreamsGroup.add(streamLine);
+        currentRibbons.push({
+          line: streamLine,
+          mat: streamMat,
+          speedX: ((s % 2 === 0) ? 1 : -1) * (0.28 + s * 0.05),
+          speedY: ((s % 2 === 0) ? -1 : 1) * (0.36 + s * 0.04),
+          speedZ: ((s % 3 === 0) ? 1 : -1) * 0.22
+        });
+      }
+
+      // 3. Fine Flowing Current Particles gliding in laminar orbits around the core
+      const flowParticleCount = 160;
+      const flowParticleGeo = new THREE.BufferGeometry();
+      const flowParticlePositions = new Float32Array(flowParticleCount * 3);
+      const flowParticleMeta = [];
+      for (let i = 0; i < flowParticleCount; i++) {
+        const radius = 0.96 + Math.random() * 0.48;
+        const theta = Math.random() * Math.PI * 2;
+        const inc = (Math.random() - 0.5) * Math.PI * 0.85;
+        const speed = (0.55 + Math.random() * 0.65) * (i % 2 === 0 ? 1 : -1);
+        flowParticleMeta.push({ radius, theta, inc, speed });
+        flowParticlePositions[i * 3]     = Math.cos(theta) * radius;
+        flowParticlePositions[i * 3 + 1] = Math.sin(theta) * Math.cos(inc) * radius;
+        flowParticlePositions[i * 3 + 2] = Math.sin(theta) * Math.sin(inc) * radius;
+      }
+      flowParticleGeo.setAttribute('position', new THREE.BufferAttribute(flowParticlePositions, 3));
+      const flowParticleMat = new THREE.PointsMaterial({
+        color: 0x7dd3fc,
+        size: 0.0045,
+        transparent: true,
+        opacity: 0.68
+      });
+      const flowParticleCloud = new THREE.Points(flowParticleGeo, flowParticleMat);
+      coreGroup.add(flowParticleCloud);
+
+      // Helper to build each Concentric Gyroscopic Ring
+      function createGyroRing(radius, tubeRadius, separation, colorHex, tiltX, tiltY, tiltZ) {
+        const ringGroup = new THREE.Group();
+        ringGroup.rotation.set(tiltX, tiltY, tiltZ);
+
+        const mat = new THREE.MeshBasicMaterial({
+          color: colorHex,
+          transparent: true,
+          opacity: 0.82
+        });
+
+        const ringA = new THREE.Mesh(new THREE.TorusGeometry(radius - separation, tubeRadius, 14, 128), mat);
+        const ringB = new THREE.Mesh(new THREE.TorusGeometry(radius + separation, tubeRadius * 0.65, 14, 128), mat);
+        ringGroup.add(ringA);
+        ringGroup.add(ringB);
+
+        return {
+          ringGroup,
+          mat,
+          radius
+        };
+      }
+
+      // 5 Concentric Rings Ordered from Innermost (Clinical Psychology) to Outermost (Extras)
+      const r1Gyro = createGyroRing(2.38, 0.028, 0.060, 0x38bdf8,  0.48, -0.25,  0.12); // 1. Psicología y Psiquiatría (8)
+      const r2Gyro = createGyroRing(3.55, 0.026, 0.055, 0x818cf8, -0.34,  0.28, -0.16); // 2. Algoritmo (6)
+      const r3Gyro = createGyroRing(4.75, 0.025, 0.055, 0x2dd4bf,  0.24,  0.42,  0.10); // 3. Evolución 2022-2026 (5)
+      const r4Gyro = createGyroRing(5.95, 0.023, 0.052, 0xfbbf24, -0.28, -0.32,  0.20); // 4. Entorno y 6 Rivales (8)
+      const r5Gyro = createGyroRing(7.10, 0.020, 0.048, 0xcbd5e1,  0.18, -0.18, -0.24); // 5. Extras (4)
+
+      atomRoot.add(r1Gyro.ringGroup);
+      atomRoot.add(r2Gyro.ringGroup);
+      atomRoot.add(r3Gyro.ringGroup);
+      atomRoot.add(r4Gyro.ringGroup);
+      atomRoot.add(r5Gyro.ringGroup);
+
+      const gyroRingsMap = {
+        r1: r1Gyro,
+        r2: r2Gyro,
+        r3: r3Gyro,
+        r4: r4Gyro,
+        r5: r5Gyro
+      };
+
+      const nodeObjects = {};
+
+      nodesDatabase.forEach(nd => {
+        const labelEl = document.createElement('div');
+        if (nd.ring === 'core') {
+          labelEl.className = 'atom-label atom-label-core';
+          labelEl.innerHTML = `<span>${nd.shortLabel}</span>`;
+        } else {
+          labelEl.className = 'atom-label';
+          labelEl.innerHTML = `<span style="color:${nd.dotCss}">●</span> ${nd.shortLabel}`;
+        }
+
+        labelEl.addEventListener('click', (e) => {
+          e.stopPropagation();
+          selectNode(nd.id, true);
+        });
+        labelsContainer.appendChild(labelEl);
+
+        if (nd.ring === 'core') {
+          nodeObjects[nd.id] = {
+            data: nd,
+            mesh: coreSphereMesh,
+            labelEl
+          };
+        } else {
+          const parentRing = gyroRingsMap[nd.ring];
+          const r = parentRing.radius;
+          const gemMat = new THREE.MeshStandardMaterial({
+            color: nd.colorHex,
+            emissive: nd.colorHex,
+            emissiveIntensity: 0.58,
+            roughness: 0.20,
+            metalness: 0.32,
+            flatShading: true
+          });
+          const gemMesh = new THREE.Mesh(new THREE.OctahedronGeometry(0.22, 0), gemMat);
+          gemMesh.position.set(Math.cos(nd.angle) * r, Math.sin(nd.angle) * r, 0);
+          parentRing.ringGroup.add(gemMesh);
+
+          nodeObjects[nd.id] = {
+            data: nd,
+            mesh: gemMesh,
+            mat: gemMat,
+            parentRing: nd.ring,
+            labelEl
+          };
+        }
+      });
+
+      // -----------------------------------------------------------------------
+      // E. APPLY COLOR PALETTE THEME
+      // -----------------------------------------------------------------------
+      function applyPalette(themeKey) {
+        const pal = colorPalettes[themeKey] || colorPalettes.arctic;
+        state.themeKey = pal.key;
+
+        const root = document.documentElement;
+        root.style.setProperty('--bg-base', pal.bgBase);
+        root.style.setProperty('--hud-bg', pal.hudBg);
+        root.style.setProperty('--hud-inner', pal.hudInner);
+        root.style.setProperty('--hud-border', pal.hudBorder);
+        root.style.setProperty('--accent-primary', pal.accentPrimary);
+        root.style.setProperty('--accent-secondary', pal.accentSecondary);
+
+        coreSphereMat.color.setHex(pal.coreColor);
+        coreSphereMat.emissive.setHex(pal.coreEmissive);
+        coreGlowLight.color.setHex(pal.coreEmissive);
+        flowParticleMat.color.setHex(pal.currentColorA);
+
+        currentRibbons.forEach((cr, idx) => {
+          cr.mat.color.setHex(idx % 2 === 0 ? pal.currentColorA : pal.currentColorB);
+        });
+
+        ['r1', 'r2', 'r3', 'r4', 'r5'].forEach(rk => {
+          gyroRingsMap[rk].mat.color.setHex(pal[rk]);
+        });
+
+        document.getElementById('lblCurrentPalette').textContent = pal.name;
+
+        document.querySelectorAll('.theme-btn').forEach(btn => {
+          if (btn.getAttribute('data-theme') === pal.key) {
+            btn.className = "theme-btn py-1.5 px-2 rounded-lg bg-white text-black font-semibold flex items-center gap-1.5";
+          } else {
+            btn.className = "theme-btn py-1.5 px-2 rounded-lg bg-black/60 text-slate-300 border border-white/10 flex items-center gap-1.5";
+          }
+        });
+      }
+
+      document.getElementById('btnCyclePalette').addEventListener('click', () => {
+        const idx = paletteOrder.indexOf(state.themeKey);
+        const nextKey = paletteOrder[(idx + 1) % paletteOrder.length];
+        applyPalette(nextKey);
+      });
+
+      document.querySelectorAll('.theme-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          applyPalette(btn.getAttribute('data-theme'));
+        });
+      });
+
+      function selectNode(nodeId, autoExpandOnTap = false) {
+        state.selectedNodeId = nodeId;
+        const obj = nodeObjects[nodeId];
+        if (!obj) return;
+        const nd = obj.data;
+
+        Object.values(nodeObjects).forEach(item => {
+          if (item.data.id === nodeId) {
+            item.labelEl.classList.add('active-node');
+          } else {
+            item.labelEl.classList.remove('active-node');
+          }
+        });
+
+        document.getElementById('cardDot').style.backgroundColor = nd.dotCss;
+        document.getElementById('cardDot').style.boxShadow = `0 0 8px ${nd.dotCss}`;
+        document.getElementById('cardCategory').textContent = nd.category;
+        document.getElementById('cardRingBadge').textContent = nd.ringLabel;
+        document.getElementById('cardTitle').textContent = nd.title;
+        document.getElementById('cardSubtitle').textContent = nd.subtitle;
+        document.getElementById('cardBody').textContent = nd.body;
+        document.getElementById('cardQuoteBox').textContent = nd.quote;
+
+        if (typeof updateHoloInspectorCanvas === 'function') {
+          updateHoloInspectorCanvas();
+        }
+        if (autoExpandOnTap) {
+          setSheetExpanded(true);
+        }
+      }
+
+      function renderTabuladorModal() {
+        const lvl = tabuladorLevels[state.tabLevel - 1];
+        document.getElementById('tabKpiDb').textContent = lvl.db;
+        document.getElementById('tabKpiGorro').textContent = lvl.gorro;
+        document.getElementById('tabKpiDist').textContent = lvl.dist;
+        document.getElementById('tabKpiMuletilla').textContent = lvl.muletilla;
+        document.getElementById('tabKpiProb').textContent = lvl.prob;
+        document.getElementById('tabKpiRoute').textContent = lvl.route;
+
+        const tbody = document.getElementById('tabTableBody');
+        tbody.innerHTML = tabuladorLevels.map(row => {
+          const isSelected = row.level === state.tabLevel;
+          const rowClass = isSelected
+            ? "bg-sky-500/20 text-white font-semibold border-l-4 border-sky-400"
+            : "text-slate-300 hover:bg-white/5";
+          return `
+            <tr class="${rowClass} transition-colors cursor-pointer" data-rowlevel="${row.level}">
+              <td class="py-2 px-2.5 font-bold ${isSelected ? 'text-sky-300' : 'text-slate-200'}">${row.code}</td>
+              <td class="py-2 px-2.5">${row.db}</td>
+              <td class="py-2 px-2.5">${row.gorro} · ${row.dist}</td>
+              <td class="py-2 px-2.5">${row.muletilla}</td>
+              <td class="py-2 px-2.5 text-amber-300 font-bold">${row.prob}</td>
+              <td class="py-2 px-2.5 font-sans text-xs">${row.desc}</td>
+            </tr>
+          `;
+        }).join('');
+
+        tbody.querySelectorAll('tr').forEach(tr => {
+          tr.addEventListener('click', () => {
+            state.tabLevel = parseInt(tr.getAttribute('data-rowlevel'), 10);
+            document.getElementById('sliderTabLevel').value = state.tabLevel;
+            renderTabuladorModal();
+          });
+        });
+      }
+
+      function renderRsiLogs() {
+        const list = document.getElementById('rsiLogList');
+        list.innerHTML = state.rsiCommits.map((log, i) => `
+          <li class="hud-card-inner rounded-lg p-2.5 text-[11px] text-slate-200 leading-relaxed">
+            <span class="mono theme-accent-text font-bold">[RSI #${state.rsiCommits.length - i}]</span> ${log}
+          </li>
+        `).join('');
+        document.getElementById('headerRsiBadge').textContent = `FORMULACIÓN PSICOLÓGICA Y CONDUCTUAL · RSI v5.0 (${state.rsiCommits.length})`;
+      }
+
+      function resizeViewport() {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        renderer.setSize(w, h, false);
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+      }
+      window.addEventListener('resize', resizeViewport);
+      resizeViewport();
+
+      // -----------------------------------------------------------------------
+      // F. IN-WORLD 3D HOLOGRAPHIC HUD + QUEST 3 CONTROLLERS (SELECT & SQUEEZE)
+      // -----------------------------------------------------------------------
+      // Why 3D Holographic HUD? In Meta Quest Browser, HTML dom-overlay is often
+      // hidden inside immersive-ar Passthrough. This 3D CanvasTexture HUD guarantees
+      // that the full Jarvis interface (Inspector Card + Ring Filters + N1-N5 Tabulador)
+      // floats natively in 3D space right next to the gyroscopic atom!
+      state.holo3dVisible = true;
+      state.xrPosX = 0.0;
+      let grabbingController = null;
+      const grabOffsetPos = new THREE.Vector3();
+
+      // Subtle Web Audio API Jarvis Telemetry Synth
+      let audioCtx = null;
+      function playJarvisTone(freq = 680, duration = 0.045) {
+        try {
+          if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          if (audioCtx.state === 'suspended') audioCtx.resume();
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(freq * 1.25, audioCtx.currentTime + duration);
+          gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start();
+          osc.stop(audioCtx.currentTime + duration);
+        } catch (e) {}
+      }
+
+      const holoHudGroup = new THREE.Group();
+      xrSceneGroup.add(holoHudGroup);
+
+      // 1. Right-Side 3D Holographic Inspector Panel (Displays selected Node + N1-N5 KPI)
+      const holoCanvas = document.createElement('canvas');
+      holoCanvas.width = 1024;
+      holoCanvas.height = 768;
+      const holoCtx = holoCanvas.getContext('2d');
+      const holoTex = new THREE.CanvasTexture(holoCanvas);
+      holoTex.minFilter = THREE.LinearFilter;
+      holoTex.magFilter = THREE.LinearFilter;
+
+      const holoPanelMat = new THREE.MeshBasicMaterial({
+        map: holoTex,
+        transparent: true,
+        opacity: 0.94,
+        side: THREE.DoubleSide
+      });
+      const holoPanelMesh = new THREE.Mesh(new THREE.PlaneGeometry(5.6, 4.2), holoPanelMat);
+      holoPanelMesh.position.set(10.6, 0.6, 0.8);
+      holoPanelMesh.rotation.y = -0.32;
+      holoHudGroup.add(holoPanelMesh);
+
+      function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 8) {
+        const words = String(text || '').split(' ');
+        let line = '';
+        let linesDrawn = 0;
+        for (let n = 0; n < words.length; n++) {
+          const testLine = line + words[n] + ' ';
+          const metrics = ctx.measureText(testLine);
+          if (metrics.width > maxWidth && n > 0) {
+            ctx.fillText(line, x, y);
+            line = words[n] + ' ';
+            y += lineHeight;
+            linesDrawn++;
+            if (linesDrawn >= maxLines - 1) {
+              line += '...';
+              break;
+            }
+          } else {
+            line = testLine;
+          }
+        }
+        ctx.fillText(line, x, y);
+        return y + lineHeight;
+      }
+
+      function updateHoloInspectorCanvas() {
+        const obj = nodeObjects[state.selectedNodeId] || nodeObjects['core_shady'];
+        if (!obj) return;
+        const nd = obj.data;
+        const lvl = tabuladorLevels[state.tabLevel - 1];
+
+        holoCtx.clearRect(0, 0, 1024, 768);
+
+        // Glassmorphic Jarvis Frame
+        holoCtx.fillStyle = 'rgba(8, 14, 26, 0.90)';
+        holoCtx.beginPath();
+        holoCtx.roundRect(16, 16, 992, 736, 28);
+        holoCtx.fill();
+        holoCtx.lineWidth = 4;
+        holoCtx.strokeStyle = nd.dotCss || '#38bdf8';
+        holoCtx.stroke();
+
+        // Top Header Strip
+        holoCtx.fillStyle = 'rgba(56, 189, 248, 0.14)';
+        holoCtx.fillRect(20, 20, 984, 68);
+
+        holoCtx.fillStyle = nd.dotCss || '#38bdf8';
+        holoCtx.font = 'bold 22px "JetBrains Mono", monospace';
+        holoCtx.fillText(`🥽 HOLOGRAMA XR · ${nd.ringLabel} · [${nd.category}]`, 44, 62);
+
+        // Title
+        holoCtx.fillStyle = '#ffffff';
+        holoCtx.font = 'bold 31px "Inter", sans-serif';
+        let nextY = wrapCanvasText(holoCtx, nd.title, 44, 132, 936, 38, 2);
+
+        // Subtitle
+        holoCtx.fillStyle = '#7dd3fc';
+        holoCtx.font = '600 22px "Inter", sans-serif';
+        nextY = wrapCanvasText(holoCtx, nd.subtitle, 44, nextY + 8, 936, 30, 2);
+
+        // Divider
+        holoCtx.strokeStyle = 'rgba(148, 163, 184, 0.3)';
+        holoCtx.lineWidth = 2;
+        holoCtx.beginPath();
+        holoCtx.moveTo(44, nextY + 4);
+        holoCtx.lineTo(980, nextY + 4);
+        holoCtx.stroke();
+
+        // Body Text
+        holoCtx.fillStyle = '#e2e8f0';
+        holoCtx.font = '23px "Inter", sans-serif';
+        nextY = wrapCanvasText(holoCtx, nd.body, 44, nextY + 40, 936, 33, 7);
+
+        // Quote Box
+        holoCtx.fillStyle = 'rgba(15, 23, 42, 0.95)';
+        holoCtx.fillRect(44, 520, 936, 95);
+        holoCtx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
+        holoCtx.strokeRect(44, 520, 936, 95);
+        holoCtx.fillStyle = '#bae6fd';
+        holoCtx.font = '20px "JetBrains Mono", monospace';
+        wrapCanvasText(holoCtx, `EVIDENCIA: ${nd.quote}`, 62, 554, 900, 28, 2);
+
+        // Bottom Status Bar (Active N1-N5 Tabulador Level + Controller Hint)
+        holoCtx.fillStyle = 'rgba(2, 132, 199, 0.22)';
+        holoCtx.fillRect(44, 634, 936, 92);
+        holoCtx.fillStyle = '#fcd34d';
+        holoCtx.font = 'bold 21px "JetBrains Mono", monospace';
+        holoCtx.fillText(`PRESIÓN PLAZA ACTIVA: ${lvl.code} | Ruido: ${lvl.db} | Dist: ${lvl.dist} (${lvl.prob})`, 62, 668);
+        holoCtx.fillStyle = '#94a3b8';
+        holoCtx.font = '19px "JetBrains Mono", monospace';
+        holoCtx.fillText(`CONTROLES QUEST 3: [Gatillo] Seleccionar Nodo/Botón 3D · [Agarre Lateral] Mover Átomo · [Joystick] Rotar`, 62, 704);
+
+        holoTex.needsUpdate = true;
+      }
+
+      // 2. Bottom 3D Interactive Spatial Buttons (Ring Filters + N1-N5 + Orbit/Palette)
+      const xrSpatialButtons = [];
+      const buttonConfigs = [
+        { id: 'xr_btn_all', label: 'TODOS (32)', action: () => setRingFilter('all'), x: -6.0, y: -8.3, color: '#38bdf8' },
+        { id: 'xr_btn_r1',  label: 'A1: PSIQUE (8)', action: () => setRingFilter('r1'), x: -3.6, y: -8.3, color: '#38bdf8' },
+        { id: 'xr_btn_r2',  label: 'A2: ÁRBOL (6)', action: () => setRingFilter('r2'), x: -1.2, y: -8.3, color: '#818cf8' },
+        { id: 'xr_btn_r3',  label: 'A3: AÑOS (5)', action: () => setRingFilter('r3'), x:  1.2, y: -8.3, color: '#2dd4bf' },
+        { id: 'xr_btn_r4',  label: 'A4: RIVALES (8)', action: () => setRingFilter('r4'), x: 3.6, y: -8.3, color: '#fbbf24' },
+        { id: 'xr_btn_r5',  label: 'A5: CULTURA (4)', action: () => setRingFilter('r5'), x: 6.0, y: -8.3, color: '#cbd5e1' },
+        { id: 'xr_btn_lvl', label: 'NIVEL N1–N5 ↻', action: () => { state.tabLevel = (state.tabLevel % 5) + 1; document.getElementById('sliderTabLevel').value = state.tabLevel; renderTabuladorModal(); updateHoloInspectorCanvas(); }, x: -3.6, y: -9.5, color: '#f59e0b' },
+        { id: 'xr_btn_pal', label: 'TEMA COLOR 🎨', action: () => document.getElementById('btnCyclePalette').click(), x: -1.2, y: -9.5, color: '#38bdf8' },
+        { id: 'xr_btn_spd', label: 'PAUSA/GIRO ⏯', action: () => { state.speedMult = state.speedMult > 0.1 ? 0.0 : 1.0; document.getElementById('sliderSpeed').value = state.speedMult * 10; document.getElementById('lblSpeed').textContent = state.speedMult.toFixed(1) + 'x'; }, x: 1.2, y: -9.5, color: '#2dd4bf' },
+        { id: 'xr_btn_rst', label: 'CENTRAR 🎯', action: () => { state.xrPosX = 0; document.getElementById('btnResetXrPose').click(); document.getElementById('btnCenterAtom').click(); }, x: 3.6, y: -9.5, color: '#cbd5e1' }
+      ];
+
+      buttonConfigs.forEach(cfg => {
+        const bCanv = document.createElement('canvas');
+        bCanv.width = 256;
+        bCanv.height = 72;
+        const bCtx = bCanv.getContext('2d');
+        bCtx.fillStyle = 'rgba(11, 18, 32, 0.92)';
+        bCtx.beginPath();
+        bCtx.roundRect(4, 4, 248, 64, 16);
+        bCtx.fill();
+        bCtx.lineWidth = 3;
+        bCtx.strokeStyle = cfg.color;
+        bCtx.stroke();
+        bCtx.fillStyle = '#ffffff';
+        bCtx.font = 'bold 21px "JetBrains Mono", monospace';
+        bCtx.textAlign = 'center';
+        bCtx.textBaseline = 'middle';
+        bCtx.fillText(cfg.label, 128, 36);
+
+        const bTex = new THREE.CanvasTexture(bCanv);
+        const bMat = new THREE.MeshBasicMaterial({ map: bTex, transparent: true, side: THREE.DoubleSide });
+        const bMesh = new THREE.Mesh(new THREE.PlaneGeometry(2.15, 0.62), bMat);
+        bMesh.position.set(cfg.x, cfg.y, 1.2);
+        bMesh.rotation.x = -0.22;
+        bMesh.userData.xrButtonAction = cfg.action;
+        holoHudGroup.add(bMesh);
+        xrSpatialButtons.push(bMesh);
+      });
+
+      // 3. 3D Floating Sprite Badges attached to each of the 32 Nodes for Native Stereo Readability
+      Object.values(nodeObjects).forEach(item => {
+        const nd = item.data;
+        const sCanv = document.createElement('canvas');
+        sCanv.width = 384;
+        sCanv.height = 64;
+        const sCtx = sCanv.getContext('2d');
+        sCtx.fillStyle = 'rgba(9, 13, 24, 0.88)';
+        sCtx.beginPath();
+        sCtx.roundRect(4, 6, 376, 52, 14);
+        sCtx.fill();
+        sCtx.lineWidth = 3;
+        sCtx.strokeStyle = nd.dotCss || '#38bdf8';
+        sCtx.stroke();
+        sCtx.fillStyle = '#f8fafc';
+        sCtx.font = 'bold 21px "JetBrains Mono", monospace';
+        sCtx.textAlign = 'center';
+        sCtx.textBaseline = 'middle';
+        sCtx.fillText(nd.shortLabel.slice(0, 28), 192, 32);
+
+        const sTex = new THREE.CanvasTexture(sCanv);
+        const sMat = new THREE.SpriteMaterial({ map: sTex, transparent: true, depthTest: false });
+        const sprite = new THREE.Sprite(sMat);
+        sprite.scale.set(nd.ring === 'core' ? 2.4 : 1.75, nd.ring === 'core' ? 0.40 : 0.29, 1);
+        sprite.position.set(0, nd.ring === 'core' ? 1.18 : 0.42, 0);
+        item.mesh.add(sprite);
+        item.sprite3d = sprite;
+      });
+
+      function updateHoloToggleBtn() {
+        const lbl = document.getElementById('lblToggle3dHolo');
+        if (lbl) lbl.textContent = state.holo3dVisible ? 'HUD 3D: ON' : 'HUD 3D: OFF';
+        holoHudGroup.visible = state.holo3dVisible;
+      }
+      document.getElementById('btnToggle3dHolo').addEventListener('click', () => {
+        state.holo3dVisible = !state.holo3dVisible;
+        updateHoloToggleBtn();
+      });
+
+      const xrRaycaster = new THREE.Raycaster();
+      const xrTempMatrix = new THREE.Matrix4();
+      const xrControllers = [];
+
+      function getInteractiveNodeMeshes() {
+        const nodeMeshes = Object.values(nodeObjects)
+          .filter(item => item.data.ring === 'core' || state.ringFilter === 'all' || state.ringFilter === item.data.ring)
+          .map(item => item.mesh);
+        return state.holo3dVisible ? nodeMeshes.concat(xrSpatialButtons) : nodeMeshes;
+      }
+
+      function triggerRingModalForNode(nd) {
+        if (!nd) return;
+        if (nd.ring === 'core' || nd.ring === 'r1') {
+          openPsique();
+        } else if (nd.ring === 'r2') {
+          openTabulador();
+        } else if (nd.ring === 'r3' || nd.ring === 'r4') {
+          openEvolucion();
+        } else if (nd.ring === 'r5') {
+          openExpediente();
+        }
+      }
+
+      function onXRSelect(event) {
+        const controller = event.target;
+        xrTempMatrix.identity().extractRotation(controller.matrixWorld);
+        xrRaycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+        xrRaycaster.ray.direction.set(0, 0, -1).applyMatrix4(xrTempMatrix);
+
+        const meshes = getInteractiveNodeMeshes();
+        const hits = xrRaycaster.intersectObjects(meshes, false);
+        if (hits.length > 0) {
+          const hitMesh = hits[0].object;
+          if (hitMesh.userData && hitMesh.userData.xrButtonAction) {
+            playJarvisTone(840, 0.05);
+            hitMesh.userData.xrButtonAction();
+            updateHoloInspectorCanvas();
+          } else {
+            const found = Object.values(nodeObjects).find(o => o.mesh === hitMesh);
+            if (found) {
+              playJarvisTone(640, 0.055);
+              const wasAlreadySelected = (state.selectedNodeId === found.data.id);
+              selectNode(found.data.id, true);
+              updateHoloInspectorCanvas();
+              if (state.xrAutoModal || wasAlreadySelected) {
+                triggerRingModalForNode(found.data);
+              }
+            }
+          }
+          if (event.data && event.data.gamepad && event.data.gamepad.hapticActuators && event.data.gamepad.hapticActuators[0]) {
+            try {
+              event.data.gamepad.hapticActuators[0].pulse(0.65, 40);
+            } catch (err) {}
+          }
+        }
+      }
+
+      // Grab / Move Entire Hologram in the Room with Meta Quest 3 Grip (Squeeze) Button
+      function onXRSqueezeStart(event) {
+        grabbingController = event.target;
+        const ctrlPos = new THREE.Vector3().setFromMatrixPosition(grabbingController.matrixWorld);
+        grabOffsetPos.copy(xrSceneGroup.position).sub(ctrlPos);
+        playJarvisTone(480, 0.06);
+      }
+      function onXRSqueezeEnd(event) {
+        if (grabbingController === event.target) {
+          grabbingController = null;
+        }
+      }
+
+      // Instantiate both Meta Quest 3 controllers (Left = 0, Right = 1) with laser pointer & hit reticle
+      for (let cIdx = 0; cIdx < 2; cIdx++) {
+        const controller = renderer.xr.getController(cIdx);
+        controller.addEventListener('select', onXRSelect);
+        controller.addEventListener('squeezestart', onXRSqueezeStart);
+        controller.addEventListener('squeezeend', onXRSqueezeEnd);
+
+        // Visual Laser Beam along -Z axis
+        const laserGeo = new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(0, 0, 0),
+          new THREE.Vector3(0, 0, -1)
+        ]);
+        const laserMat = new THREE.LineBasicMaterial({
+          color: 0x38bdf8,
+          transparent: true,
+          opacity: 0.88
+        });
+        const laserLine = new THREE.Line(laserGeo, laserMat);
+        laserLine.name = 'xrLaserLine';
+        laserLine.scale.z = 2.5;
+        controller.add(laserLine);
+
+        // Impact Reticle at the tip of the laser when intersecting a 3D node
+        const reticleMesh = new THREE.Mesh(
+          new THREE.RingGeometry(0.008, 0.014, 24),
+          new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide })
+        );
+        reticleMesh.visible = false;
+        scene.add(reticleMesh);
+
+        scene.add(controller);
+        xrControllers.push({ controller, laserLine, laserMat, reticleMesh });
+      }
+
+      // -----------------------------------------------------------------------
+      // G. WEBXR ANIMATION LOOP (renderer.setAnimationLoop)
+      // -----------------------------------------------------------------------
+      let lastTime = performance.now();
+
+      function animate(timestamp) {
+        const now = (typeof timestamp === 'number') ? timestamp : performance.now();
+        const dt = Math.min(0.05, Math.max(0.001, (now - lastTime) / 1000));
+        lastTime = now;
+
+        const isPresentingXR = renderer.xr.isPresenting;
+
+        // 1. Update Spatial Group Transform + Quest 3 Grip Grabbing & Thumbstick Controls
+        if (isPresentingXR && grabbingController) {
+          const ctrlPos = new THREE.Vector3().setFromMatrixPosition(grabbingController.matrixWorld);
+          xrSceneGroup.position.copy(ctrlPos).add(grabOffsetPos);
+          state.xrPosX = xrSceneGroup.position.x;
+          state.xrPosY = xrSceneGroup.position.y;
+          state.xrPosZ = xrSceneGroup.position.z;
+        } else {
+          xrSceneGroup.position.set(state.xrPosX || 0, state.xrPosY, state.xrPosZ);
+        }
+        xrSceneGroup.scale.setScalar(state.xrScale);
+
+        // Read Meta Quest 3 Controller Thumbsticks during XR session for smooth rotation & scaling
+        if (isPresentingXR) {
+          const session = renderer.xr.getSession();
+          if (session && session.inputSources) {
+            for (const source of session.inputSources) {
+              if (source.gamepad && source.gamepad.axes && source.gamepad.axes.length >= 4) {
+                const axX = source.gamepad.axes[2];
+                const axY = source.gamepad.axes[3];
+                if (Math.abs(axX) > 0.15) state.targetYaw += axX * dt * 1.6;
+                if (Math.abs(axY) > 0.15) state.targetPitch = Math.max(-1.18, Math.min(1.18, state.targetPitch + axY * dt * 1.2));
+              }
+            }
+          }
+        }
+
+        // 2. Smooth Laminar Current around the Core
+        const flowDt = dt * state.currentFlowSpeed;
+        currentRibbons.forEach(cr => {
+          cr.line.rotation.x += cr.speedX * flowDt;
+          cr.line.rotation.y += cr.speedY * flowDt;
+          cr.line.rotation.z += cr.speedZ * flowDt;
+        });
+
+        const posAttr = flowParticleGeo.getAttribute('position');
+        for (let i = 0; i < flowParticleCount; i++) {
+          const meta = flowParticleMeta[i];
+          meta.theta += meta.speed * flowDt * 0.9;
+          const r = meta.radius;
+          posAttr.setXYZ(
+            i,
+            Math.cos(meta.theta) * r,
+            Math.sin(meta.theta) * Math.cos(meta.inc) * r,
+            Math.sin(meta.theta) * Math.sin(meta.inc) * r
+          );
+        }
+        posAttr.needsUpdate = true;
+
+        // 3. Camera (2D mode) & Atom Root Smoothing
+        state.yaw += (state.targetYaw - state.yaw) * 0.12;
+        state.pitch += (state.targetPitch - state.pitch) * 0.12;
+        state.cameraZoom += (state.targetZoom - state.cameraZoom) * 0.12;
+
+        if (!isPresentingXR) {
+          camera.position.set(0, state.xrPosY, state.xrPosZ + state.cameraZoom * state.xrScale);
+          camera.lookAt(0, state.xrPosY, state.xrPosZ);
+        }
+
+        atomRoot.rotation.y = state.yaw;
+        atomRoot.rotation.x = state.pitch;
+
+        // 4. Living Multi-Axis Ring Rotation (Both orbital Z spin AND axial X/Y rotation in alternating directions)
+        const spd = state.speedMult * dt;
+
+        r1Gyro.ringGroup.rotation.z += spd * 0.42;
+        r1Gyro.ringGroup.rotation.x += spd * 0.24;
+        r1Gyro.ringGroup.rotation.y -= spd * 0.18;
+
+        r2Gyro.ringGroup.rotation.z -= spd * 0.34;
+        r2Gyro.ringGroup.rotation.x -= spd * 0.20;
+        r2Gyro.ringGroup.rotation.y += spd * 0.22;
+
+        r3Gyro.ringGroup.rotation.z += spd * 0.27;
+        r3Gyro.ringGroup.rotation.x += spd * 0.16;
+        r3Gyro.ringGroup.rotation.y += spd * 0.14;
+
+        r4Gyro.ringGroup.rotation.z -= spd * 0.21;
+        r4Gyro.ringGroup.rotation.x -= spd * 0.14;
+        r4Gyro.ringGroup.rotation.y -= spd * 0.16;
+
+        r5Gyro.ringGroup.rotation.z += spd * 0.16;
+        r5Gyro.ringGroup.rotation.x += spd * 0.11;
+        r5Gyro.ringGroup.rotation.y -= spd * 0.12;
+
+        // 5. WebXR Laser Raycasting Hover Detection (Meta Quest 3 Controllers)
+        state.hoveredNodeId = null;
+        if (isPresentingXR) {
+          const activeMeshes = getInteractiveNodeMeshes();
+          xrControllers.forEach(ctrlObj => {
+            const { controller, laserLine, laserMat, reticleMesh } = ctrlObj;
+            xrTempMatrix.identity().extractRotation(controller.matrixWorld);
+            xrRaycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+            xrRaycaster.ray.direction.set(0, 0, -1).applyMatrix4(xrTempMatrix);
+
+            const hits = xrRaycaster.intersectObjects(activeMeshes, false);
+            if (hits.length > 0) {
+              const hit = hits[0];
+              laserLine.scale.z = hit.distance;
+              laserMat.color.setHex(0xfbbf24);
+              reticleMesh.visible = true;
+              reticleMesh.position.copy(hit.point);
+              reticleMesh.lookAt(xrRaycaster.ray.origin);
+              const found = Object.values(nodeObjects).find(o => o.mesh === hit.object);
+              if (found) state.hoveredNodeId = found.data.id;
+            } else {
+              laserLine.scale.z = 2.5;
+              laserMat.color.setHex(0x38bdf8);
+              reticleMesh.visible = false;
+            }
+          });
+        } else {
+          xrControllers.forEach(ctrlObj => {
+            ctrlObj.reticleMesh.visible = false;
+          });
+        }
+
+        // 6. Scale & Highlight Selected or XR-Hovered Nodes
+        Object.values(nodeObjects).forEach(item => {
+          if (item.data.ring !== 'core') {
+            item.mesh.rotation.x += 0.014;
+            item.mesh.rotation.y += 0.018;
+            const isSel = item.data.id === state.selectedNodeId;
+            const isHov = item.data.id === state.hoveredNodeId;
+            item.mesh.scale.setScalar(isSel ? 1.52 : (isHov ? 1.32 : 1.0));
+          }
+        });
+
+        ['r1', 'r2', 'r3', 'r4', 'r5'].forEach(rKey => {
+          const isVis = (state.ringFilter === 'all' || state.ringFilter === rKey);
+          gyroRingsMap[rKey].ringGroup.visible = isVis;
+        });
+
+        renderer.render(scene, camera);
+
+        // 7. Project 3D Node coordinates to 2D Screen Labels (DOM Overlay & 2D Viewport)
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const tempVec = new THREE.Vector3();
+        const activeCam = isPresentingXR ? renderer.xr.getCamera(camera) : camera;
+
+        Object.values(nodeObjects).forEach(item => {
+          const nd = item.data;
+          const ringVisible = nd.ring === 'core' || state.ringFilter === 'all' || state.ringFilter === nd.ring;
+          if (item.sprite3d) {
+            item.sprite3d.visible = state.labelsVisible && ringVisible && (isPresentingXR || state.holo3dVisible);
+          }
+          if (!state.labelsVisible || !ringVisible || isPresentingXR) {
+            item.labelEl.style.display = 'none';
+            return;
+          }
+
+          item.mesh.getWorldPosition(tempVec);
+          tempVec.project(activeCam);
+
+          const sx = (tempVec.x * 0.5 + 0.5) * w;
+          const sy = (-tempVec.y * 0.5 + 0.5) * h;
+
+          if (tempVec.z > 1 || sx < 20 || sx > w - 20 || sy < 78 || sy > h - 92) {
+            item.labelEl.style.display = 'none';
+          } else {
+            item.labelEl.style.display = 'block';
+            item.labelEl.style.left = sx.toFixed(1) + 'px';
+            item.labelEl.style.top = sy.toFixed(1) + 'px';
+          }
+        });
+      }
+
+      // -----------------------------------------------------------------------
+      // G. TOUCH, PINCH-TO-ZOOM & POINTER INTERACTION
+      // -----------------------------------------------------------------------
+      let isDragging = false;
+      let prevX = 0, prevY = 0;
+      let initialPinchDist = null;
+      let initialPinchZoom = state.targetZoom;
+      const raycaster = new THREE.Raycaster();
+      const mouseVec = new THREE.Vector2();
+
+      canvas.addEventListener('pointerdown', (e) => {
+        isDragging = true;
+        prevX = e.clientX;
+        prevY = e.clientY;
+
+        const rect = canvas.getBoundingClientRect();
+        mouseVec.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouseVec.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(mouseVec, camera);
+
+        const meshes = getInteractiveNodeMeshes();
+        const hits = raycaster.intersectObjects(meshes, false);
+        if (hits.length > 0) {
+          const hitMesh = hits[0].object;
+          if (hitMesh.userData && hitMesh.userData.xrButtonAction) {
+            playJarvisTone(840, 0.05);
+            hitMesh.userData.xrButtonAction();
+            updateHoloInspectorCanvas();
+          } else {
+            const found = Object.values(nodeObjects).find(o => o.mesh === hitMesh);
+            if (found) {
+              playJarvisTone(640, 0.055);
+              selectNode(found.data.id, true);
+            }
+          }
+        }
+      });
+
+      canvas.addEventListener('pointermove', (e) => {
+        if (!isDragging || initialPinchDist !== null) return;
+        const dx = e.clientX - prevX;
+        const dy = e.clientY - prevY;
+        prevX = e.clientX;
+        prevY = e.clientY;
+
+        state.targetYaw += dx * 0.008;
+        state.targetPitch = Math.max(-1.18, Math.min(1.18, state.targetPitch + dy * 0.008));
+      });
+
+      canvas.addEventListener('pointerup', () => { isDragging = false; });
+      canvas.addEventListener('pointercancel', () => { isDragging = false; });
+
+      canvas.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+          const dx = e.touches[0].clientX - e.touches[1].clientX;
+          const dy = e.touches[0].clientY - e.touches[1].clientY;
+          initialPinchDist = Math.hypot(dx, dy);
+          initialPinchZoom = state.targetZoom;
+        }
+      }, { passive: true });
+
+      canvas.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 2 && initialPinchDist) {
+          const dx = e.touches[0].clientX - e.touches[1].clientX;
+          const dy = e.touches[0].clientY - e.touches[1].clientY;
+          const dist = Math.hypot(dx, dy);
+          const scale = initialPinchDist / Math.max(20, dist);
+          state.targetZoom = Math.max(8.0, Math.min(25.0, initialPinchZoom * scale));
+        }
+      }, { passive: true });
+
+      canvas.addEventListener('touchend', (e) => {
+        if (e.touches.length < 2) {
+          initialPinchDist = null;
+        }
+      });
+
+      canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        state.targetZoom = Math.max(8.0, Math.min(25.0, state.targetZoom + e.deltaY * 0.009));
+      }, { passive: false });
+
+      document.getElementById('sheetHeaderBar').addEventListener('click', () => {
+        setSheetExpanded(!state.sheetExpanded);
+      });
+
+      const leftPanelEl = document.getElementById('leftHudPanel');
+      function setTelemetryOpen(val) {
+        state.telemetryOpen = val;
+        if (val) leftPanelEl.classList.remove('hidden');
+        else leftPanelEl.classList.add('hidden');
+      }
+      document.getElementById('btnToggleTelemetry').addEventListener('click', () => {
+        setTelemetryOpen(!state.telemetryOpen);
+      });
+      document.getElementById('btnCloseTelemetry').addEventListener('click', () => {
+        setTelemetryOpen(false);
+      });
+
+      document.getElementById('btnCenterAtom').addEventListener('click', () => {
+        state.targetYaw = -0.32;
+        state.targetPitch = 0.28;
+        state.targetZoom = isMobileScreen() ? 17.8 : 15.0;
+        selectNode('core_shady', false);
+      });
+
+      document.getElementById('btnToggleLabels').addEventListener('click', () => {
+        state.labelsVisible = !state.labelsVisible;
+        document.getElementById('lblToggleLabelsText').textContent = state.labelsVisible ? 'Nombres' : 'Ocultos';
+      });
+
+      document.getElementById('btnToggleHud').addEventListener('click', () => {
+        state.hudVisible = !state.hudVisible;
+        const disp = state.hudVisible ? '' : 'none';
+        document.getElementById('rightHudCard').style.display = disp;
+        document.getElementById('topQuickStrip').style.display = disp;
+        if (!state.hudVisible) setTelemetryOpen(false);
+      });
+
+      function setRingFilter(rKey) {
+        state.ringFilter = rKey;
+        const counts = {
+          all: '32 NODOS',
+          r1: '8 NODOS (PSICOLOGÍA Y PSIQUIATRÍA)',
+          r2: '6 NODOS (ALGORITMO)',
+          r3: '5 NODOS (2022–2026)',
+          r4: '8 NODOS (ENTORNO Y RIVALES)',
+          r5: '4 NODOS (EXTRAS)'
+        };
+        document.getElementById('lblNodeCount').textContent = counts[rKey] || '32 NODOS';
+
+        document.querySelectorAll('.ring-filter').forEach(b => {
+          if (b.getAttribute('data-ring') === rKey) {
+            b.className = "ring-filter py-1.5 px-2.5 rounded-lg bg-white text-black font-semibold text-left flex justify-between";
+          } else {
+            b.className = "ring-filter py-1.5 px-2.5 rounded-lg bg-black/60 text-slate-300 border border-white/10 text-left flex justify-between";
+          }
+        });
+
+        document.querySelectorAll('.focus-pill').forEach(b => {
+          if (b.getAttribute('data-focus') === rKey) {
+            b.className = "focus-pill shrink-0 px-2.5 py-1 rounded-full text-[10px] font-semibold mono flex items-center gap-1.5 bg-white text-black border border-white backdrop-blur-md";
+          } else {
+            b.className = "focus-pill shrink-0 px-2.5 py-1 rounded-full text-[10px] font-medium mono flex items-center gap-1.5 bg-black/80 text-slate-300 border border-white/15 backdrop-blur-md";
+          }
+        });
+      }
+
+      document.querySelectorAll('.focus-pill').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const focus = btn.getAttribute('data-focus');
+          setRingFilter(focus);
+        });
+      });
+
+      document.querySelectorAll('.ring-filter').forEach(btn => {
+        btn.addEventListener('click', () => setRingFilter(btn.getAttribute('data-ring')));
+      });
+
+      document.getElementById('sliderSpeed').addEventListener('input', (e) => {
+        state.speedMult = parseInt(e.target.value, 10) / 10;
+        document.getElementById('lblSpeed').textContent = state.speedMult.toFixed(1) + 'x (Vivo)';
+      });
+
+      document.getElementById('sliderCurrentFlow').addEventListener('input', (e) => {
+        state.currentFlowSpeed = parseInt(e.target.value, 10) / 10;
+        document.getElementById('lblCurrentFlow').textContent = state.currentFlowSpeed.toFixed(1) + 'x';
+      });
+
+      function updateXrStatusLabel() {
+        const diam = (state.xrScale * 14.2).toFixed(2);
+        document.getElementById('lblXrScale').textContent = `${state.xrScale.toFixed(2)}x (${diam}m)`;
+        document.getElementById('lblXrHeight').textContent = `${state.xrPosY.toFixed(2)}m`;
+        document.getElementById('lblXrDepth').textContent = `${state.xrPosZ.toFixed(2)}m`;
+        const xrStatusText = document.getElementById('xrStatusText');
+        if (xrStatusText && !renderer.xr.isPresenting) {
+          xrStatusText.textContent = `XR ${state.xrScale.toFixed(2)}x (${diam}m · Z:${state.xrPosZ.toFixed(1)}m)`;
+        }
+      }
+
+      document.getElementById('sliderXrScale').addEventListener('input', (e) => {
+        state.xrScale = parseInt(e.target.value, 10) / 100;
+        updateXrStatusLabel();
+      });
+
+      document.getElementById('sliderXrHeight').addEventListener('input', (e) => {
+        state.xrPosY = parseInt(e.target.value, 10) / 100;
+        updateXrStatusLabel();
+      });
+
+      document.getElementById('sliderXrDepth').addEventListener('input', (e) => {
+        state.xrPosZ = -parseInt(e.target.value, 10) / 100;
+        updateXrStatusLabel();
+      });
+
+      document.getElementById('chkXrAutoModal').addEventListener('change', (e) => {
+        state.xrAutoModal = e.target.checked;
+      });
+
+      document.getElementById('btnResetXrPose').addEventListener('click', () => {
+        state.xrScale = 0.10;
+        state.xrPosY = 1.20;
+        state.xrPosZ = -1.00;
+        document.getElementById('sliderXrScale').value = 10;
+        document.getElementById('sliderXrHeight').value = 120;
+        document.getElementById('sliderXrDepth').value = 100;
+        updateXrStatusLabel();
+      });
+
+      const psiqueModal = document.getElementById('psiqueModal');
+      const tabModal = document.getElementById('tabuladorModal');
+      const evoModal = document.getElementById('evolucionModal');
+      const expModal = document.getElementById('expedienteModal');
+
+      function openPsique() {
+        psiqueModal.classList.remove('hidden');
+        psiqueModal.classList.add('flex');
+      }
+      function closePsique() {
+        psiqueModal.classList.add('hidden');
+        psiqueModal.classList.remove('flex');
+      }
+      function openTabulador() {
+        renderTabuladorModal();
+        tabModal.classList.remove('hidden');
+        tabModal.classList.add('flex');
+      }
+      function closeTabulador() {
+        tabModal.classList.add('hidden');
+        tabModal.classList.remove('flex');
+      }
+      function openEvolucion() {
+        evoModal.classList.remove('hidden');
+        evoModal.classList.add('flex');
+      }
+      function closeEvolucion() {
+        evoModal.classList.add('hidden');
+        evoModal.classList.remove('flex');
+      }
+      function openExpediente() {
+        renderRsiLogs();
+        expModal.classList.remove('hidden');
+        expModal.classList.add('flex');
+      }
+      function closeExpediente() {
+        expModal.classList.add('hidden');
+        expModal.classList.remove('flex');
+      }
+
+      document.getElementById('btnCardPsique').addEventListener('click', openPsique);
+      document.getElementById('btnClosePsique').addEventListener('click', closePsique);
+
+      document.getElementById('btnCardTabulador').addEventListener('click', openTabulador);
+      document.getElementById('btnCloseTabulador').addEventListener('click', closeTabulador);
+
+      document.getElementById('btnCardEvolucion').addEventListener('click', openEvolucion);
+      document.getElementById('btnCloseEvolucion').addEventListener('click', closeEvolucion);
+
+      document.getElementById('btnOpenRsiBottom').addEventListener('click', openExpediente);
+      document.getElementById('btnCloseExpediente').addEventListener('click', closeExpediente);
+
+      document.getElementById('sliderTabLevel').addEventListener('input', (e) => {
+        state.tabLevel = parseInt(e.target.value, 10);
+        renderTabuladorModal();
+      });
+
+      document.getElementById('rsiInputScore').addEventListener('input', (e) => {
+        document.getElementById('lblRsiScore').textContent = e.target.value + ' / 5';
+      });
+
+      document.getElementById('rsiForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const stim = document.getElementById('rsiInputStimulus').value;
+        const score = document.getElementById('rsiInputScore').value;
+        const note = document.getElementById('rsiInputNote').value.trim();
+        const flags = [];
+        if (document.getElementById('chkBeanie').checked) flags.push("Quitó gorro / 10cm");
+        if (document.getElementById('chkMuletilla').checked) flags.push("Muletilla tiempo");
+        if (document.getElementById('chkEnvies').checked) flags.push("Queja envidia / jueces");
+        if (document.getElementById('chkLie').checked) flags.push("Charoleo viajes");
+
+        state.rsiCommits.unshift(
+          `${stim} | Fidelidad: ${score}/5 | Activó: [${flags.join(', ') || 'Ninguno'}]${note ? ' | Nota: ' + note : ''}`
+        );
+        document.getElementById('rsiInputNote').value = '';
+        renderRsiLogs();
+      });
+
+      applyPalette('arctic');
+      selectNode('core_shady', false);
+      renderTabuladorModal();
+      renderRsiLogs();
+      updateXrStatusLabel();
+      renderer.setAnimationLoop(animate);
+    })();
+  </script>
+</body>
+</html>
