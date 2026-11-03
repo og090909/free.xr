@@ -1,0 +1,2366 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>F1 Stark Holo-Table & Pit-Wall Telemetry Engine (WebXR Meta Quest 3)</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg-base: #04070f;
+      --hud-bg: rgba(9, 14, 26, 0.88);
+      --hud-inner: rgba(15, 23, 42, 0.92);
+      --hud-border: rgba(56, 189, 248, 0.26);
+      --accent-primary: #38bdf8;
+      --accent-secondary: #e10600;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-base);
+      background-image:
+        radial-gradient(circle at 50% 42%, rgba(56, 189, 248, 0.10) 0%, rgba(225, 6, 0, 0.04) 42%, transparent 74%),
+        linear-gradient(rgba(255,255,255,0.016) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.016) 1px, transparent 1px);
+      background-size: 100% 100%, 36px 36px, 36px 36px;
+      color: #f8fafc;
+      overflow: hidden;
+      height: 100dvh;
+      width: 100vw;
+      margin: 0;
+      user-select: none;
+      touch-action: none;
+      transition: background-color 0.3s ease;
+    }
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+      font-variant-numeric: tabular-nums;
+    }
+    .hud-glass {
+      background: var(--hud-bg);
+      border: 1px solid var(--hud-border);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      transition: background 0.3s ease, border-color 0.3s ease;
+    }
+    .hud-card-inner {
+      background: var(--hud-inner);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+    }
+    .theme-accent-text {
+      color: var(--accent-primary);
+    }
+    body.xr-passthrough-active {
+      background-color: transparent !important;
+      background-image: none !important;
+    }
+    /* Floating 3D Corner Labels in 2D Viewport */
+    .corner-pin {
+      position: absolute;
+      transform: translate(-50%, -120%);
+      pointer-events: auto;
+      cursor: pointer;
+      white-space: nowrap;
+      padding: 2px 6px;
+      border-radius: 5px;
+      font-size: 9.5px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      background: rgba(8, 13, 24, 0.86);
+      border: 1px solid rgba(56, 189, 248, 0.32);
+      color: #e2e8f0;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.75);
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+    .corner-pin:hover {
+      transform: translate(-50%, -130%) scale(1.08);
+      border-color: #38bdf8;
+      z-index: 30;
+    }
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: rgba(255, 255, 255, 0.16);
+      height: 5px;
+      border-radius: 999px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent-primary);
+      cursor: pointer;
+      border: 2px solid #04070f;
+      box-shadow: 0 0 10px var(--accent-primary);
+    }
+    #ARButton {
+      position: fixed !important;
+      bottom: 12px !important;
+      left: 12px !important;
+      right: auto !important;
+      width: auto !important;
+      min-width: 176px !important;
+      padding: 9px 15px !important;
+      border-radius: 13px !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 10.5px !important;
+      font-weight: 800 !important;
+      letter-spacing: 0.04em !important;
+      text-transform: uppercase !important;
+      background: linear-gradient(135deg, rgba(225, 6, 0, 0.92), rgba(153, 27, 27, 0.95)) !important;
+      border: 1.5px solid #f87171 !important;
+      color: #ffffff !important;
+      box-shadow: 0 0 24px rgba(225, 6, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+      backdrop-filter: blur(16px) !important;
+      -webkit-backdrop-filter: blur(16px) !important;
+      z-index: 45 !important;
+      cursor: pointer !important;
+      transition: transform 0.15s ease, box-shadow 0.2s ease !important;
+    }
+    #ARButton:hover {
+      transform: translateY(-1px) scale(1.02) !important;
+      box-shadow: 0 0 32px rgba(239, 68, 68, 0.75) !important;
+    }
+    @media (max-width: 640px) {
+      #ARButton {
+        top: 84px !important;
+        bottom: auto !important;
+        left: auto !important;
+        right: 8px !important;
+        min-width: 124px !important;
+        padding: 6px 10px !important;
+        font-size: 9.5px !important;
+      }
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.4);
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.35);
+      border-radius: 999px;
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="relative w-screen h-[100dvh] overflow-hidden">
+
+  <!-- ===================================================================== -->
+  <!-- 1. 3D WEBGL / WEBXR HOLOGRAPHIC SANDBOX VIEWPORT                      -->
+  <!-- ===================================================================== -->
+  <div id="SandboxViewport" class="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing z-0">
+    <canvas id="f1Canvas" class="w-full h-full block"></canvas>
+    <div id="cornerLabelsContainer" class="absolute inset-0 pointer-events-none overflow-hidden z-10"></div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- 2. TOP COMMAND BAR + CIRCUIT & RACE MODE SELECTOR                     -->
+  <!-- ===================================================================== -->
+  <header class="absolute top-2 inset-x-2 sm:top-3 sm:inset-x-4 z-30 flex flex-col gap-1.5 pointer-events-none">
+    <div class="flex items-center justify-between gap-2">
+      <!-- Brand & Active Track Info -->
+      <div class="hud-glass rounded-xl px-2.5 py-1.5 sm:px-3.5 sm:py-2 pointer-events-auto flex items-center gap-2.5 min-w-0">
+        <div class="w-8 h-8 shrink-0 rounded-lg bg-gradient-to-br from-red-600 to-red-900 border border-red-400/60 flex flex-col items-center justify-center mono leading-none shadow-[0_0_15px_rgba(225,6,0,0.45)]">
+          <span class="text-[11px] font-black text-white">F1</span>
+          <span class="text-[7px] font-bold text-red-200">XR</span>
+        </div>
+        <div class="min-w-0">
+          <div class="flex items-center gap-2">
+            <span id="raceFlagBadge" class="mono text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">
+              ● PISTA VERDE · DRS HABILITADO
+            </span>
+            <span id="hdrSub" class="mono text-[9px] text-slate-400 truncate hidden lg:inline">
+              4.304 km · 17 Curvas · Altitud 2,285 m
+            </span>
+          </div>
+          <h1 class="text-xs sm:text-sm font-black text-white truncate mt-0.5">
+            STARK PIT-WALL: <span id="circuitHeaderName" class="theme-accent-text">Autódromo Hnos. Rodríguez (CDMX)</span>
+          </h1>
+        </div>
+      </div>
+
+      <!-- Top Right Controls -->
+      <div class="flex items-center gap-1.5 pointer-events-auto shrink-0">
+        <button id="btnRaceState" type="button" class="hud-glass px-2.5 py-1.5 rounded-xl text-[10.5px] mono font-bold text-emerald-300 border border-emerald-400/35 flex items-center gap-1 transition" title="Cambiar Estado de Carrera (Verde / Safety Car / Batalla DRS)">
+          <span id="raceStateIcon">🟢</span>
+          <span id="raceStateText" class="hidden md:inline">Ritmo Carrera</span>
+        </button>
+        <button id="btnToggle3dWall" type="button" class="hud-glass px-2.5 py-1.5 rounded-xl text-[10.5px] mono font-bold text-sky-200 border border-sky-400/35 flex items-center gap-1 transition" title="Mostrar/Ocultar Pantallas Holográficas 3D sobre la Mesa">
+          <span>🥽</span>
+          <span id="lbl3dWall" class="hidden sm:inline">Pantallas 3D: ON</span>
+        </button>
+        <button id="btnToggleCornerPins" type="button" class="hud-glass px-2.5 py-1.5 rounded-xl text-[10.5px] mono font-semibold text-slate-200 flex items-center gap-1 transition" title="Mostrar/Ocultar Curvas y Sectores">
+          <span>📍</span>
+          <span id="lblCornerPins" class="hidden lg:inline">Curvas</span>
+        </button>
+        <button id="btnToggleSettings" type="button" class="hud-glass px-2.5 py-1.5 rounded-xl text-[10.5px] mono font-semibold text-slate-100 flex items-center gap-1 transition" title="Calibración de Mesa XR, Escala y Paletas">
+          <span>🎛️</span>
+          <span class="hidden sm:inline">Mesa XR</span>
+        </button>
+        <div id="xrStatusPill" class="hidden"></div>
+        <button id="btnToggleSimPlay" type="button" class="hud-glass px-2.5 py-1.5 rounded-xl text-[10.5px] mono font-bold text-amber-300 border border-amber-400/35 flex items-center gap-1 transition" title="Pausar/Reanudar Simulación">
+          <span id="iconSimPlay">⏸</span>
+          <span id="lblSimPlay" class="hidden sm:inline">Pausar</span>
+        </button>
+        <button id="btnCycleSpeed" type="button" class="hud-glass px-2.5 py-1.5 rounded-xl text-[10.5px] mono font-bold text-sky-300 border border-sky-400/30 flex items-center gap-1 transition" title="Velocidad de Simulación">
+          <span>⚡</span>
+          <span id="lblSpeed">1.0x</span>
+        </button>
+        <button id="btnResetTrackView" type="button" class="hud-glass px-2.5 py-1.5 rounded-xl text-[10.5px] font-semibold text-slate-200 flex items-center gap-1 transition" title="Centrar Cámara en Mesa">
+          <span>🎯</span>
+        </button>
+        <button id="btnToggleHudView" type="button" class="hud-glass px-2.5 py-1.5 rounded-xl text-[10.5px] font-semibold text-slate-200 flex items-center gap-1 transition" title="Modo Vista Limpia">
+          <span>👁️</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Circuit Selector + Sector Filter Strip -->
+    <div id="circuitPillStrip" class="flex items-center justify-between gap-2 overflow-x-auto pointer-events-auto pb-0.5 no-scrollbar">
+      <div class="flex items-center gap-1.5">
+        <button type="button" data-circuit="mexico" class="circuit-btn shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold mono flex items-center gap-1.5 bg-sky-400 text-slate-950 border border-sky-200 shadow-[0_0_14px_rgba(56,189,248,0.5)]">
+          <span>🇲🇽 México (Hnos. Rodríguez)</span>
+        </button>
+        <button type="button" data-circuit="monaco" class="circuit-btn shrink-0 px-2.5 py-1 rounded-full text-[10px] font-medium mono flex items-center gap-1.5 bg-black/80 text-slate-200 border border-white/15">
+          <span>🇲🇨 Mónaco (Monte Carlo)</span>
+        </button>
+        <button type="button" data-circuit="spa" class="circuit-btn shrink-0 px-2.5 py-1 rounded-full text-[10px] font-medium mono flex items-center gap-1.5 bg-black/80 text-slate-200 border border-white/15">
+          <span>🇧🇪 Bélgica (Spa-Francorchamps)</span>
+        </button>
+        <button type="button" data-circuit="silverstone" class="circuit-btn shrink-0 px-2.5 py-1 rounded-full text-[10px] font-medium mono flex items-center gap-1.5 bg-black/80 text-slate-200 border border-white/15">
+          <span>🇬🇧 Gran Bretaña (Silverstone)</span>
+        </button>
+      </div>
+
+      <!-- Sector Color Legend -->
+      <div class="hidden xl:flex items-center gap-2 hud-glass px-2.5 py-1 rounded-full text-[9.5px] mono">
+        <span class="flex items-center gap-1 text-red-400"><span class="w-2 h-2 rounded-full bg-red-500"></span>S1 Vel. Punta</span>
+        <span class="flex items-center gap-1 text-sky-300"><span class="w-2 h-2 rounded-full bg-sky-400"></span>S2 Técnico</span>
+        <span class="flex items-center gap-1 text-purple-300"><span class="w-2 h-2 rounded-full bg-purple-400"></span>S3 Estadio/Tracción</span>
+        <span class="flex items-center gap-1 text-emerald-300"><span class="w-2 h-2 rounded-full bg-emerald-400"></span>Zona DRS</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===================================================================== -->
+  <!-- 3. COLLAPSIBLE XR TABLE CALIBRATION & PALETTE DRAWER                  -->
+  <!-- ===================================================================== -->
+  <aside id="xrSettingsDrawer" class="hud-glass rounded-2xl p-3.5 w-[290px] sm:w-[320px] absolute left-2 sm:left-4 top-24 z-40 pointer-events-auto transition-all duration-200 hidden max-h-[75dvh] overflow-y-auto custom-scroll">
+    <div class="flex items-center justify-between border-b border-white/10 pb-2">
+      <div>
+        <div class="text-[9px] mono uppercase tracking-widest theme-accent-text font-bold">
+          ARQUITECTURA ESPACIAL META QUEST 3
+        </div>
+        <div class="text-xs font-bold text-white mt-0.5">Calibración de Mesa y Estética</div>
+      </div>
+      <button id="btnCloseSettings" type="button" class="px-2 py-0.5 rounded bg-white/10 text-slate-200 text-xs mono">✕</button>
+    </div>
+
+    <!-- 4 Palettes -->
+    <div class="mt-2.5">
+      <div class="text-[10px] mono uppercase text-slate-400 mb-1.5">TEMA HOLOGRÁFICO (4 ESTILOS)</div>
+      <div class="grid grid-cols-2 gap-1.5 text-[10.5px] mono">
+        <button type="button" data-theme="stark" class="theme-btn py-1.5 px-2 rounded-lg bg-white text-black font-bold flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-sky-400"></span>
+          Stark Cian
+        </button>
+        <button type="button" data-theme="crimson" class="theme-btn py-1.5 px-2 rounded-lg bg-black/60 text-red-300 border border-white/10 flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+          F1 Carmesí
+        </button>
+        <button type="button" data-theme="papaya" class="theme-btn py-1.5 px-2 rounded-lg bg-black/60 text-orange-300 border border-white/10 flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-orange-400"></span>
+          McLaren Papaya
+        </button>
+        <button type="button" data-theme="emerald" class="theme-btn py-1.5 px-2 rounded-lg bg-black/60 text-emerald-300 border border-white/10 flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+          Aston Esmeralda
+        </button>
+      </div>
+    </div>
+
+    <!-- Spatial Calibration Sliders -->
+    <div class="mt-3 pt-2.5 border-t border-white/10 space-y-2.5">
+      <div>
+        <div class="flex justify-between text-[10px] mono text-slate-300 mb-1">
+          <span>TAMAÑO DE MESA (ESCALA XR)</span>
+          <span id="lblXrScaleVal" class="theme-accent-text font-bold">0.16x (~1.3m)</span>
+        </div>
+        <input id="sliderXrScale" type="range" min="8" max="28" value="16" class="w-full" />
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <div class="flex justify-between text-[10px] mono text-slate-400 mb-1">
+            <span>ALTURA MESA (Y)</span>
+            <span id="lblXrHeightVal" class="text-sky-300 font-bold">0.95m</span>
+          </div>
+          <input id="sliderXrHeight" type="range" min="55" max="145" value="95" class="w-full" />
+        </div>
+        <div>
+          <div class="flex justify-between text-[10px] mono text-slate-400 mb-1">
+            <span>DISTANCIA (Z)</span>
+            <span id="lblXrDepthVal" class="text-sky-300 font-bold">-0.95m</span>
+          </div>
+          <input id="sliderXrDepth" type="range" min="55" max="190" value="95" class="w-full" />
+        </div>
+      </div>
+      <div>
+        <div class="flex justify-between text-[10px] mono text-slate-400 mb-1">
+          <span>LONGITUD ESTELAS DE LUZ</span>
+          <span id="lblTrailLenVal" class="text-amber-300 font-bold">100%</span>
+        </div>
+        <input id="sliderTrailLen" type="range" min="20" max="100" value="100" class="w-full" />
+      </div>
+      <button id="btnResetXrTable" type="button" class="w-full py-1.5 rounded-lg bg-sky-950/80 hover:bg-sky-900/90 text-sky-200 border border-sky-400/40 mono text-[10.5px] font-bold transition">
+        🥽 Re-Anclar sobre Escritorio (Y:0.95m · Z:-0.95m)
+      </button>
+    </div>
+  </aside>
+
+  <!-- ===================================================================== -->
+  <!-- 4. LEFT SIDE: F1 BROADCAST LIVE TIMING TOWER (P1 - P10)               -->
+  <!-- ===================================================================== -->
+  <aside id="timingTowerCard" class="hud-glass rounded-2xl p-2.5 sm:p-3 w-[205px] sm:w-[242px] absolute left-2 sm:left-4 top-24 z-30 pointer-events-auto transition-all duration-200">
+    <div class="flex items-center justify-between border-b border-white/10 pb-1.5">
+      <div class="text-[9.5px] mono uppercase tracking-wider text-sky-300 font-extrabold flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+        CLASIFICACIÓN EN VIVO
+      </div>
+      <span class="mono text-[9.5px] text-slate-300">VUELTA <span id="lblLapCount" class="text-white font-black">24/71</span></span>
+    </div>
+
+    <!-- Column Subheaders -->
+    <div class="grid grid-cols-12 text-[8.5px] mono uppercase text-slate-400 pt-1 pb-0.5 px-1 border-b border-white/5">
+      <span class="col-span-2">POS</span>
+      <span class="col-span-4">PILOTO</span>
+      <span class="col-span-4 text-right">GAP / INT</span>
+      <span class="col-span-2 text-right">NEUM</span>
+    </div>
+
+    <div id="timingTowerList" class="mt-1 space-y-0.5 mono text-[10.5px] max-h-[44dvh] overflow-y-auto custom-scroll pr-0.5">
+      <!-- Populated dynamically at 10Hz -->
+    </div>
+
+    <!-- Bottom Quick Modal Triggers -->
+    <div class="mt-2 pt-2 border-t border-white/10 grid grid-cols-2 gap-1.5">
+      <button id="btnOpenHeadToHead" type="button" class="py-1.5 px-2 rounded-lg bg-sky-950/80 hover:bg-sky-900 text-sky-200 border border-sky-400/35 mono text-[9.5px] font-bold flex items-center justify-center gap-1 transition">
+        <span>📊</span>
+        <span>Comparar VS</span>
+      </button>
+      <button id="btnOpenStrategy" type="button" class="py-1.5 px-2 rounded-lg bg-amber-950/75 hover:bg-amber-900 text-amber-200 border border-amber-400/35 mono text-[9.5px] font-bold flex items-center justify-center gap-1 transition">
+        <span>🛞</span>
+        <span>Estrategia Pits</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ===================================================================== -->
+  <!-- 5. BOTTOM RIGHT: DEEP TELEMETRY & LIVE OSCILLOSCOPE INSPECTOR         -->
+  <!-- ===================================================================== -->
+  <section id="driverTelemetryCard" class="fixed inset-x-2 bottom-2 sm:inset-x-auto sm:right-4 sm:bottom-4 sm:w-[440px] z-30 pointer-events-auto transition-all duration-300">
+    <div class="hud-glass rounded-2xl overflow-hidden p-3 sm:p-3.5">
+      <!-- Top Driver Header -->
+      <div class="flex items-center justify-between border-b border-white/10 pb-2">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div id="telTeamColorDot" class="w-1.5 h-9 rounded-full bg-blue-500 shadow-[0_0_12px_#3b82f6]"></div>
+          <div class="min-w-0">
+            <div class="flex items-center gap-1.5">
+              <span id="telDriverNum" class="mono text-[10px] font-black px-1.5 py-0.2 rounded bg-white/15 text-white">#1</span>
+              <span id="telTeamName" class="mono text-[9.5px] uppercase font-bold text-slate-300 truncate">ORACLE RED BULL RACING</span>
+            </div>
+            <h2 id="telDriverName" class="text-sm sm:text-base font-black text-white truncate">Max Verstappen (VER)</h2>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <div class="text-right">
+            <div class="text-[8.5px] mono text-slate-400 uppercase">POS / DELTA</div>
+            <div class="flex items-baseline gap-1.5">
+              <span id="telPosition" class="text-base sm:text-lg font-black mono text-amber-400">P1</span>
+              <span id="telInterval" class="text-[10px] mono font-bold text-emerald-300">LÍDER</span>
+            </div>
+          </div>
+          <button id="btnFollowCam" type="button" class="px-2 py-1.5 rounded-lg bg-white/10 hover:bg-sky-500/30 border border-white/15 text-[10px] mono font-bold text-sky-200 transition" title="Anclar Cámara sobre este Piloto">
+            🎥 Seguir
+          </button>
+        </div>
+      </div>
+
+      <!-- 15-LED Shift Light Strip -->
+      <div id="rpmLedStrip" class="grid grid-cols-15 gap-1 my-2 h-2 p-0.5 rounded bg-black/80 border border-white/10" style="grid-template-columns: repeat(15, minmax(0, 1fr));">
+        <!-- 15 LEDs injected by JS -->
+      </div>
+
+      <!-- Core Gauges + G-Force Vector Meter -->
+      <div class="grid grid-cols-12 gap-2 items-center">
+        <!-- Speed, Gear, Tyre & ERS (8 cols) -->
+        <div class="col-span-8 space-y-2">
+          <div class="grid grid-cols-3 gap-1.5">
+            <div class="hud-card-inner rounded-xl p-2 text-center">
+              <div class="text-[8.5px] mono text-slate-400 uppercase">VELOCIDAD</div>
+              <div id="telSpeed" class="text-base sm:text-lg font-black mono text-sky-300 leading-tight mt-0.5">328 <span class="text-[9px] text-slate-400">km/h</span></div>
+            </div>
+            <div class="hud-card-inner rounded-xl p-2 text-center">
+              <div class="text-[8.5px] mono text-slate-400 uppercase">MARCHA / RPM</div>
+              <div id="telGearRpm" class="text-base sm:text-lg font-black mono text-white leading-tight mt-0.5">8ª <span class="text-[9px] text-amber-300">11.8k</span></div>
+            </div>
+            <div class="hud-card-inner rounded-xl p-2 text-center">
+              <div class="text-[8.5px] mono text-slate-400 uppercase">ERS / BATERÍA</div>
+              <div id="telErsSoc" class="text-sm sm:text-base font-black mono text-emerald-300 leading-tight mt-0.5">86% <span class="text-[8.5px] text-slate-400">DEPLOY</span></div>
+            </div>
+          </div>
+
+          <!-- Throttle & Brake Pedals -->
+          <div class="space-y-1 text-[9.5px] mono">
+            <div class="flex items-center gap-2">
+              <span class="w-10 text-slate-400 font-semibold">ACEL</span>
+              <div class="flex-1 bg-black/70 rounded-full h-2 overflow-hidden border border-white/10">
+                <div id="barThrottle" class="bg-emerald-400 h-full w-[98%] transition-none"></div>
+              </div>
+              <span id="lblThrottle" class="w-8 text-right text-emerald-300 font-bold">98%</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="w-10 text-slate-400 font-semibold">FRENO</span>
+              <div class="flex-1 bg-black/70 rounded-full h-2 overflow-hidden border border-white/10">
+                <div id="barBrake" class="bg-red-500 h-full w-[0%] transition-none"></div>
+              </div>
+              <span id="lblBrake" class="w-8 text-right text-red-400 font-bold">0%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live 2D G-Force Circle & 4-Tyre Temps (4 cols) -->
+        <div class="col-span-4 hud-card-inner rounded-xl p-1.5 flex flex-col items-center justify-center">
+          <div class="flex items-center justify-between w-full px-1 text-[8px] mono text-slate-400">
+            <span>G-FORCE</span>
+            <span id="lblGForcePeak" class="text-sky-300 font-bold">1.4G</span>
+          </div>
+          <canvas id="gForceCanvas" width="84" height="84" class="mt-0.5"></canvas>
+        </div>
+      </div>
+
+      <!-- Live Telemetry Oscilloscope Trace (Speed / Throttle / Brake History) -->
+      <div class="mt-2 hud-card-inner rounded-xl p-2">
+        <div class="flex items-center justify-between text-[8.5px] mono text-slate-400 mb-1">
+          <span>OSCILOSCOPIO DE TELEMETRÍA EN VIVO (VEL · ACEL · FRENO)</span>
+          <span id="telCornerStatus" class="text-sky-300 font-bold">RECTA PRINCIPAL</span>
+        </div>
+        <canvas id="telemetryTraceCanvas" width="390" height="54" class="w-full h-[50px] block rounded bg-black/50"></canvas>
+      </div>
+
+      <!-- Footer: 4 Tyre Temperatures, Sector Splits & DRS -->
+      <div class="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between gap-1 text-[9.5px] mono">
+        <div class="flex items-center gap-1.5">
+          <span id="telTyre" class="px-1.5 py-0.5 rounded bg-yellow-500/20 border border-yellow-400 text-yellow-300 font-bold">
+            🟡 MEDIO (84%)
+          </span>
+          <span id="telBrakeTemps" class="text-slate-300 hidden sm:inline">
+            🌡️ Neum: <strong class="text-amber-300">98°C</strong> · Frenos: <strong class="text-red-300">640°C</strong>
+          </span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span id="telDrsBadge" class="px-1.5 py-0.5 rounded bg-emerald-950/90 border border-emerald-400 text-emerald-300 font-bold text-[9px]">
+            DRS ACTIVO
+          </span>
+          <span id="telSectorBadge" class="px-1.5 py-0.5 rounded bg-sky-950/90 border border-sky-400 text-sky-300 font-bold text-[9px]">
+            SECTOR 1
+          </span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- 6. MODAL 1: HEAD-TO-HEAD TELEMETRY COMPARISON (VS RIVAL)              -->
+  <!-- ===================================================================== -->
+  <div id="headToHeadModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-2 sm:p-5">
+    <div class="hud-glass rounded-2xl max-w-4xl w-full p-4 sm:p-6 max-h-[90dvh] overflow-y-auto custom-scroll">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <div>
+          <span class="mono text-[10px] uppercase tracking-widest theme-accent-text font-bold">
+            TELEMETRÍA DIFERENCIAL // PIT-WALL HEAD-TO-HEAD
+          </span>
+          <h3 class="text-sm sm:text-lg font-black text-white mt-0.5">
+            Comparativa de Sectores, Velocidad Punta y Paso por Curva
+          </h3>
+        </div>
+        <button id="btnCloseHeadToHead" type="button" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white mono text-xs font-bold">✕ Cerrar</button>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+        <div>
+          <label class="block mono text-[10px] text-slate-400 mb-1">PILOTO A (REFERENCIA):</label>
+          <select id="selCompareA" class="w-full bg-slate-900 border border-sky-400/50 rounded-xl px-3 py-2 text-xs mono font-bold text-white"></select>
+        </div>
+        <div>
+          <label class="block mono text-[10px] text-slate-400 mb-1">PILOTO B (RIVAL A COMPARAR):</label>
+          <select id="selCompareB" class="w-full bg-slate-900 border border-red-400/50 rounded-xl px-3 py-2 text-xs mono font-bold text-white"></select>
+        </div>
+      </div>
+
+      <div id="headToHeadContent" class="mt-4 space-y-3">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- 7. MODAL 2: TYRE STRATEGY, DEGRADATION & PIT WINDOW                   -->
+  <!-- ===================================================================== -->
+  <div id="strategyModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-2 sm:p-5">
+    <div class="hud-glass rounded-2xl max-w-4xl w-full p-4 sm:p-6 max-h-[90dvh] overflow-y-auto custom-scroll">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <div>
+          <span class="mono text-[10px] uppercase tracking-widest text-amber-400 font-bold">
+            INGENIERÍA DE PISTA // MODELO DE DEGRADACIÓN PIRELLI Y VENTANA DE UNDERCUT
+          </span>
+          <h3 class="text-sm sm:text-lg font-black text-white mt-0.5">
+            Estrategia de Compuestos, Ritmo por Stint y Tiempo de Pérdida en Pit-Lane
+          </h3>
+        </div>
+        <button id="btnCloseStrategy" type="button" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white mono text-xs font-bold">✕ Cerrar</button>
+      </div>
+
+      <div id="strategyModalBody" class="mt-4 space-y-4 text-xs">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- 8. CORE ENGINE: PRECISION CAD TRACK + TELEMETRY PHYSICS + 3D PIT-WALL -->
+  <!-- ===================================================================== -->
+  <script>
+    (function() {
+      // -----------------------------------------------------------------------
+      // A. 4 ARCHITECTURAL COLOR THEMES
+      // -----------------------------------------------------------------------
+      const themes = {
+        stark: {
+          key: 'stark',
+          bgBase: '#04070f',
+          hudBg: 'rgba(9, 14, 26, 0.88)',
+          hudBorder: 'rgba(56, 189, 248, 0.28)',
+          accentPrimary: '#38bdf8',
+          tableBaseColor: 0x070d19,
+          gridColorA: 0x38bdf8,
+          gridColorB: 0x0f172a,
+          ringGlow: 0x38bdf8
+        },
+        crimson: {
+          key: 'crimson',
+          bgBase: '#090406',
+          hudBg: 'rgba(20, 10, 14, 0.89)',
+          hudBorder: 'rgba(239, 68, 68, 0.30)',
+          accentPrimary: '#f87171',
+          tableBaseColor: 0x12080b,
+          gridColorA: 0xef4444,
+          gridColorB: 0x1f1216,
+          ringGlow: 0xef4444
+        },
+        papaya: {
+          key: 'papaya',
+          bgBase: '#090705',
+          hudBg: 'rgba(20, 15, 10, 0.89)',
+          hudBorder: 'rgba(251, 146, 60, 0.30)',
+          accentPrimary: '#fb923c',
+          tableBaseColor: 0x14100b,
+          gridColorA: 0xf97316,
+          gridColorB: 0x1c1610,
+          ringGlow: 0xf97316
+        },
+        emerald: {
+          key: 'emerald',
+          bgBase: '#030908',
+          hudBg: 'rgba(8, 20, 18, 0.89)',
+          hudBorder: 'rgba(45, 212, 191, 0.28)',
+          accentPrimary: '#2dd4bf',
+          tableBaseColor: 0x061412,
+          gridColorA: 0x10b981,
+          gridColorB: 0x0d211d,
+          ringGlow: 0x10b981
+        }
+      };
+
+      // -----------------------------------------------------------------------
+      // B. 4 GRAND PRIX CIRCUITS WITH REAL CORNER MARKERS & ELEVATION
+      // -----------------------------------------------------------------------
+      const circuitsData = {
+        mexico: {
+          id: 'mexico',
+          name: 'Autódromo Hnos. Rodríguez (CDMX)',
+          meta: '4.304 km · 17 Curvas · Altitud 2,285 m · Pit Loss: 21.8s',
+          laps: 71,
+          currentLap: 24,
+          drsZones: [[0.01, 0.19], [0.58, 0.70]],
+          points: [
+            [-5.2, 0.02, -1.9], [-2.4, 0.02, -1.9], [0.8, 0.02, -1.9], [4.4, 0.02, -1.9],
+            [5.3, 0.04, -1.6], [5.1, 0.05, -0.8], [4.5, 0.05, -0.5],
+            [3.9, 0.04, 0.3], [4.7, 0.06, 1.0], [4.1, 0.06, 1.6],
+            [2.8, 0.05, 1.3], [1.6, 0.07, 1.8], [0.4, 0.06, 1.2], [-0.8, 0.07, 1.7],
+            [-2.2, 0.05, 1.2], [-3.4, 0.04, 0.7],
+            [-3.9, 0.14, 0.5], [-4.5, 0.18, 0.7], [-4.8, 0.18, 0.0], [-4.2, 0.12, -0.7],
+            [-4.9, 0.05, -1.3], [-5.4, 0.02, -1.7]
+          ],
+          corners: [
+            { u: 0.21, code: 'T1-T3', name: 'Moisés Solana', apexSpeed: 108 },
+            { u: 0.36, code: 'T4-T6', name: 'Recorte S2', apexSpeed: 96 },
+            { u: 0.52, code: 'T7-T11', name: 'Las Eses', apexSpeed: 218 },
+            { u: 0.77, code: 'T12-T15', name: 'Estadio Foro Sol', apexSpeed: 78 },
+            { u: 0.92, code: 'T17', name: 'Peraltada', apexSpeed: 245 }
+          ]
+        },
+        monaco: {
+          id: 'monaco',
+          name: 'Circuit de Monaco (Monte Carlo)',
+          meta: '3.337 km · 19 Curvas · Nivel del Mar · Pit Loss: 19.4s',
+          laps: 78,
+          currentLap: 42,
+          drsZones: [[0.01, 0.14]],
+          points: [
+            [-3.8, 0.04, 2.0], [-1.2, 0.04, 2.0], [1.2, 0.06, 2.0],
+            [2.3, 0.22, 1.4], [3.0, 0.42, 0.4], [2.5, 0.54, -0.8],
+            [1.4, 0.58, -1.6], [0.3, 0.48, -2.0],
+            [-0.5, 0.32, -2.2], [-1.1, 0.20, -1.7], [-0.4, 0.14, -1.3],
+            [0.7, 0.08, -1.0], [2.1, 0.03, -0.8], [3.2, 0.02, -0.1],
+            [2.6, 0.02, 0.9], [1.7, 0.02, 0.6],
+            [0.2, 0.03, 0.9], [-1.4, 0.03, 1.3], [-2.6, 0.03, 1.0], [-3.5, 0.04, 1.5]
+          ],
+          corners: [
+            { u: 0.14, code: 'T1', name: 'Sainte Dévote', apexSpeed: 92 },
+            { u: 0.34, code: 'T3-T4', name: 'Massanet / Casino', apexSpeed: 124 },
+            { u: 0.49, code: 'T6', name: 'Fairmont Hairpin', apexSpeed: 54 },
+            { u: 0.65, code: 'T9', name: 'Túnel Monte Carlo', apexSpeed: 282 },
+            { u: 0.84, code: 'T12-T15', name: 'Tabac & Piscina', apexSpeed: 196 }
+          ]
+        },
+        spa: {
+          id: 'spa',
+          name: 'Circuit de Spa-Francorchamps',
+          meta: '7.004 km · 19 Curvas · Desnivel 102 m · Pit Loss: 22.9s',
+          laps: 44,
+          currentLap: 18,
+          drsZones: [[0.24, 0.40], [0.90, 0.99]],
+          points: [
+            [-4.5, 0.12, 0.3], [-4.1, 0.08, -0.9], [-3.0, 0.02, -1.7],
+            [-2.1, -0.05, -1.1], [-1.2, 0.38, -0.9], [-0.2, 0.72, -0.6],
+            [1.8, 0.82, -0.2], [4.2, 0.80, 0.2],
+            [5.0, 0.65, 0.9], [4.4, 0.50, 1.6],
+            [3.2, 0.34, 2.0], [1.9, 0.22, 1.6], [0.6, 0.10, 2.3],
+            [-1.0, 0.05, 1.9], [-2.5, 0.06, 1.3], [-3.9, 0.09, 1.6],
+            [-4.5, 0.11, 1.0]
+          ],
+          corners: [
+            { u: 0.10, code: 'T1', name: 'La Source', apexSpeed: 74 },
+            { u: 0.22, code: 'T3-T4', name: 'Eau Rouge & Raidillon', apexSpeed: 298 },
+            { u: 0.42, code: 'T5-T7', name: 'Les Combes', apexSpeed: 138 },
+            { u: 0.64, code: 'T10-T11', name: 'Pouhon (Doble Izq)', apexSpeed: 262 },
+            { u: 0.88, code: 'T18-T19', name: 'Bus Stop Chicane', apexSpeed: 84 }
+          ]
+        },
+        silverstone: {
+          id: 'silverstone',
+          name: 'Silverstone Circuit (UK)',
+          meta: '5.891 km · 18 Curvas · Alta Carga Aero · Pit Loss: 20.5s',
+          laps: 52,
+          currentLap: 31,
+          drsZones: [[0.18, 0.30], [0.70, 0.84]],
+          points: [
+            [-4.4, 0.04, -1.6], [-2.0, 0.04, -1.6], [0.2, 0.04, -1.6],
+            [1.4, 0.05, -1.1], [2.0, 0.06, -0.1], [0.9, 0.06, 0.7],
+            [-0.5, 0.05, 1.3], [-1.9, 0.05, 1.9],
+            [-0.8, 0.07, 2.5], [1.4, 0.07, 2.1], [3.0, 0.06, 1.6],
+            [4.1, 0.06, 0.6], [4.7, 0.08, -0.4],
+            [3.8, 0.09, -1.3], [2.8, 0.08, -2.1], [1.4, 0.06, -2.5],
+            [-1.6, 0.04, -2.3], [-3.7, 0.04, -1.9]
+          ],
+          corners: [
+            { u: 0.14, code: 'T1-T2', name: 'Abbey & Farm', apexSpeed: 268 },
+            { u: 0.34, code: 'T6-T7', name: 'Brooklands & Luffield', apexSpeed: 112 },
+            { u: 0.48, code: 'T9', name: 'Copse Corner', apexSpeed: 292 },
+            { u: 0.62, code: 'T10-T14', name: 'Maggotts & Becketts', apexSpeed: 254 },
+            { u: 0.85, code: 'T15', name: 'Stowe', apexSpeed: 205 }
+          ]
+        }
+      };
+
+      // -----------------------------------------------------------------------
+      // C. 10 F1 DRIVERS WITH FULL TELEMETRY & STRATEGY PROFILES
+      // -----------------------------------------------------------------------
+      const driversData = [
+        { id: 'VER', num: 1,  code: 'VER', name: 'Max Verstappen', team: 'Oracle Red Bull Racing', colorHex: 0x3b82f6, colorCss: '#3b82f6', u: 0.96, tyre: 'M', tyreWear: 86, stops: 1, topSpeed: 334, paceFactor: 1.012, ers: 88 },
+        { id: 'NOR', num: 4,  code: 'NOR', name: 'Lando Norris',   team: 'McLaren F1 Team',        colorHex: 0xf97316, colorCss: '#f97316', u: 0.93, tyre: 'H', tyreWear: 92, stops: 1, topSpeed: 332, paceFactor: 1.009, ers: 82 },
+        { id: 'LEC', num: 16, code: 'LEC', name: 'Charles Leclerc',team: 'Scuderia Ferrari',       colorHex: 0xef4444, colorCss: '#ef4444', u: 0.89, tyre: 'M', tyreWear: 81, stops: 1, topSpeed: 335, paceFactor: 1.007, ers: 76 },
+        { id: 'PIA', num: 81, code: 'PIA', name: 'Oscar Piastri',  team: 'McLaren F1 Team',        colorHex: 0xfb923c, colorCss: '#fb923c', u: 0.84, tyre: 'M', tyreWear: 84, stops: 1, topSpeed: 330, paceFactor: 1.004, ers: 79 },
+        { id: 'HAM', num: 44, code: 'HAM', name: 'Lewis Hamilton', team: 'Mercedes-AMG Petronas',  colorHex: 0x2dd4bf, colorCss: '#2dd4bf', u: 0.79, tyre: 'H', tyreWear: 89, stops: 1, topSpeed: 329, paceFactor: 1.002, ers: 91 },
+        { id: 'SAI', num: 55, code: 'SAI', name: 'Carlos Sainz',   team: 'Scuderia Ferrari',       colorHex: 0xdc2626, colorCss: '#dc2626', u: 0.74, tyre: 'S', tyreWear: 68, stops: 2, topSpeed: 336, paceFactor: 1.005, ers: 64 },
+        { id: 'RUS', num: 63, code: 'RUS', name: 'George Russell', team: 'Mercedes-AMG Petronas',  colorHex: 0x5eead4, colorCss: '#5eead4', u: 0.68, tyre: 'M', tyreWear: 79, stops: 1, topSpeed: 328, paceFactor: 0.998, ers: 84 },
+        { id: 'PER', num: 11, code: 'PER', name: 'Sergio Pérez',   team: 'Oracle Red Bull Racing', colorHex: 0x60a5fa, colorCss: '#60a5fa', u: 0.62, tyre: 'S', tyreWear: 72, stops: 2, topSpeed: 335, paceFactor: 1.001, ers: 77 },
+        { id: 'ALO', num: 14, code: 'ALO', name: 'Fernando Alonso',team: 'Aston Martin Aramco',    colorHex: 0x10b981, colorCss: '#10b981', u: 0.55, tyre: 'H', tyreWear: 90, stops: 1, topSpeed: 326, paceFactor: 0.995, ers: 93 },
+        { id: 'GAS', num: 10, code: 'GAS', name: 'Pierre Gasly',   team: 'BWT Alpine F1 Team',     colorHex: 0xa855f7, colorCss: '#a855f7', u: 0.48, tyre: 'M', tyreWear: 77, stops: 1, topSpeed: 325, paceFactor: 0.992, ers: 71 }
+      ];
+
+      // -----------------------------------------------------------------------
+      // D. STATE & TELEMETRY HISTORY BUFFERS
+      // -----------------------------------------------------------------------
+      const state = {
+        themeKey: 'stark',
+        circuitKey: 'mexico',
+        selectedDriverId: 'VER',
+        compareDriverB: 'NOR',
+        followCam: false,
+        simRunning: true,
+        simSpeed: 1.0,
+        raceMode: 'green', // 'green' | 'sc' | 'drs_battle'
+        holoWallVisible: true,
+        cornerPinsVisible: true,
+        hudVisible: true,
+        settingsOpen: false,
+        trailLengthFactor: 1.0,
+        xrScale: 0.16,
+        xrPosX: 0.0,
+        xrPosY: 0.95,
+        xrPosZ: -0.95,
+        targetYaw: -0.24,
+        targetPitch: 0.62,
+        yaw: -0.24,
+        pitch: 0.62,
+        zoom: 14.2,
+        targetZoom: 14.2
+      };
+
+      // Ring buffer for live oscilloscope (80 samples)
+      const traceHistory = {
+        speed: new Array(80).fill(310),
+        throttle: new Array(80).fill(95),
+        brake: new Array(80).fill(0)
+      };
+
+      // Build 15 RPM LEDs in DOM
+      const rpmLedStrip = document.getElementById('rpmLedStrip');
+      const rpmLedEls = [];
+      for (let i = 0; i < 15; i++) {
+        const d = document.createElement('div');
+        d.className = 'h-full rounded-sm bg-slate-800 transition-colors duration-75';
+        rpmLedStrip.appendChild(d);
+        rpmLedEls.push(d);
+      }
+
+      // -----------------------------------------------------------------------
+      // E. WEB AUDIO SYNTHESIZER (PIT-WALL TELEMETRY CHIRPS)
+      // -----------------------------------------------------------------------
+      let audioCtx = null;
+      function playPitTone(freq = 860, dur = 0.038) {
+        try {
+          if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          if (audioCtx.state === 'suspended') audioCtx.resume();
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(freq * 1.25, audioCtx.currentTime + dur);
+          gain.gain.setValueAtTime(0.03, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start();
+          osc.stop(audioCtx.currentTime + dur);
+        } catch (e) {}
+      }
+
+      // -----------------------------------------------------------------------
+      // F. THREE.JS & WEBXR INITIALIZATION
+      // -----------------------------------------------------------------------
+      const canvas = document.getElementById('f1Canvas');
+      const cornerLabelsContainer = document.getElementById('cornerLabelsContainer');
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.xr.enabled = true;
+
+      const ARButton = {
+        createButton: function(rendererInstance, sessionInit = {}) {
+          const button = document.createElement('button');
+          button.id = 'ARButton';
+          function setupSession(mode, labelText) {
+            let currentSession = null;
+            async function onStarted(session) {
+              session.addEventListener('end', onEnded);
+              rendererInstance.xr.setReferenceSpaceType('local-floor');
+              await rendererInstance.xr.setSession(session);
+              button.textContent = '✕ SALIR DE REALIDAD MIXTA (QUEST 3)';
+              if (mode === 'immersive-ar') {
+                document.body.classList.add('xr-passthrough-active');
+                rendererInstance.setClearColor(0x000000, 0);
+              }
+              state.holoWallVisible = true;
+              document.getElementById('lbl3dWall').textContent = 'Pantallas 3D: ON';
+              currentSession = session;
+            }
+            function onEnded() {
+              if (currentSession) {
+                currentSession.removeEventListener('end', onEnded);
+                currentSession = null;
+              }
+              button.textContent = labelText;
+              document.body.classList.remove('xr-passthrough-active');
+            }
+            button.textContent = labelText;
+            button.addEventListener('click', () => {
+              if (!currentSession) {
+                navigator.xr.requestSession(mode, sessionInit).then(onStarted).catch(() => {
+                  navigator.xr.requestSession(mode, { optionalFeatures: ['local-floor'] }).then(onStarted);
+                });
+              } else {
+                currentSession.end();
+              }
+            });
+          }
+          function setupPreview() {
+            button.textContent = '🥽 VISTA MESA STARK 3D (QUEST 3 AR)';
+            button.addEventListener('click', () => {
+              state.followCam = false;
+              state.targetYaw = -0.18;
+              state.targetPitch = 0.46;
+              state.targetZoom = 15.2;
+              playPitTone(740, 0.05);
+            });
+          }
+          if ('xr' in navigator) {
+            navigator.xr.isSessionSupported('immersive-ar').then(arOk => {
+              if (arOk) setupSession('immersive-ar', '🥽 ANCLAR MESA F1 EN HABITACIÓN (AR)');
+              else navigator.xr.isSessionSupported('immersive-vr').then(vrOk => {
+                if (vrOk) setupSession('immersive-vr', '🥽 ENTRAR EN PIT-WALL VR (QUEST 3)');
+                else setupPreview();
+              }).catch(setupPreview);
+            }).catch(setupPreview);
+          } else {
+            setupPreview();
+          }
+          return button;
+        }
+      };
+
+      document.body.appendChild(ARButton.createButton(renderer, {
+        optionalFeatures: ['dom-overlay', 'local-floor'],
+        domOverlay: { root: document.body }
+      }));
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(40, 1, 0.01, 120);
+
+      scene.add(new THREE.AmbientLight(0xffffff, 0.92));
+      const sunLight = new THREE.DirectionalLight(0xffffff, 1.35);
+      sunLight.position.set(4, 10, 6);
+      scene.add(sunLight);
+
+      // Master Tabletop Group
+      const f1TableGroup = new THREE.Group();
+      f1TableGroup.position.set(state.xrPosX, state.xrPosY, state.xrPosZ);
+      f1TableGroup.scale.setScalar(state.xrScale);
+      scene.add(f1TableGroup);
+
+      const tableGlowLight = new THREE.PointLight(0x38bdf8, 1.8, 4.5);
+      tableGlowLight.position.set(0, 1.2, 0);
+      f1TableGroup.add(tableGlowLight);
+
+      // -----------------------------------------------------------------------
+      // G. STARK HOLOGRAPHIC TABLE PEDESTAL & TOPOGRAPHIC RINGS
+      // -----------------------------------------------------------------------
+      const pedestalGroup = new THREE.Group();
+      f1TableGroup.add(pedestalGroup);
+
+      const baseDiscMat = new THREE.MeshStandardMaterial({
+        color: 0x070d19,
+        roughness: 0.28,
+        metalness: 0.78,
+        transparent: true,
+        opacity: 0.88
+      });
+      const baseDiscMesh = new THREE.Mesh(new THREE.CylinderGeometry(6.8, 7.1, 0.14, 64), baseDiscMat);
+      baseDiscMesh.position.y = -0.08;
+      pedestalGroup.add(baseDiscMesh);
+
+      const outerNeonRingMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide });
+      const outerNeonRing = new THREE.Mesh(new THREE.RingGeometry(6.76, 6.86, 96), outerNeonRingMat);
+      outerNeonRing.rotation.x = Math.PI / 2;
+      outerNeonRing.position.y = -0.005;
+      pedestalGroup.add(outerNeonRing);
+
+      const innerMeasureRing = new THREE.Mesh(
+        new THREE.RingGeometry(4.80, 4.83, 96),
+        new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.32 })
+      );
+      innerMeasureRing.rotation.x = Math.PI / 2;
+      innerMeasureRing.position.y = -0.004;
+      pedestalGroup.add(innerMeasureRing);
+
+      let tableGridHelper = new THREE.GridHelper(11.6, 28, 0x38bdf8, 0x1e293b);
+      tableGridHelper.position.y = -0.002;
+      pedestalGroup.add(tableGridHelper);
+
+      // -----------------------------------------------------------------------
+      // H. HIGH-PRECISION CAD TRACK GENERATOR + LANDMARKS + SPEED PROFILE
+      // -----------------------------------------------------------------------
+      const trackLayerGroup = new THREE.Group();
+      f1TableGroup.add(trackLayerGroup);
+
+      let currentSpline = null;
+      const SAMPLES = 600;
+      let trackLookup = []; // Array of { pos, tangent, binormal, curvature, targetSpeed, sector, isDrs }
+      let cornerPinObjects = [];
+
+      function buildPrecisionCircuit(circuitKey) {
+        // Clear previous track meshes & DOM pins
+        while (trackLayerGroup.children.length > 0) {
+          trackLayerGroup.remove(trackLayerGroup.children[0]);
+        }
+        cornerLabelsContainer.innerHTML = '';
+        cornerPinObjects = [];
+
+        const circ = circuitsData[circuitKey];
+        state.circuitKey = circuitKey;
+        document.getElementById('circuitHeaderName').textContent = circ.name;
+        document.getElementById('hdrSub').textContent = circ.meta;
+        document.getElementById('lblLapCount').textContent = `${circ.currentLap}/${circ.laps}`;
+
+        const controlPts = circ.points.map(p => new THREE.Vector3(p[0], p[1], p[2]));
+        currentSpline = new THREE.CatmullRomCurve3(controlPts, true, 'centripetal', 0.5);
+
+        // 1. Sample 600 points & compute curvature + realistic braking/acceleration speed profile
+        trackLookup = [];
+        const upVec = new THREE.Vector3(0, 1, 0);
+
+        for (let i = 0; i < SAMPLES; i++) {
+          const u = i / SAMPLES;
+          const pos = currentSpline.getPointAt(u);
+          const tangent = currentSpline.getTangentAt(u).normalize();
+          const binormal = new THREE.Vector3().crossVectors(tangent, upVec).normalize();
+
+          const uPrev = (u - 0.008 + 1.0) % 1.0;
+          const uNext = (u + 0.008) % 1.0;
+          const tPrev = currentSpline.getTangentAt(uPrev);
+          const tNext = currentSpline.getTangentAt(uNext);
+          const angleDiff = tPrev.angleTo(tNext); // Higher = sharper corner
+          const curvature = Math.min(1.0, angleDiff * 2.8);
+
+          const sector = u < 0.333 ? 1 : (u < 0.666 ? 2 : 3);
+          const isDrs = circ.drsZones.some(z => u >= z[0] && u <= z[1]);
+
+          // Instantaneous cornering limit (km/h)
+          const rawCornerSpeed = Math.max(76, 336 - curvature * 265 + (isDrs ? 12 : 0));
+          trackLookup.push({
+            u,
+            pos,
+            tangent,
+            binormal,
+            curvature,
+            targetSpeed: rawCornerSpeed,
+            sector,
+            isDrs
+          });
+        }
+
+        // Backward pass to propagate realistic braking zones before sharp corners
+        for (let pass = 0; pass < 2; pass++) {
+          for (let i = SAMPLES - 1; i >= 0; i--) {
+            const nextIdx = (i + 1) % SAMPLES;
+            const maxEntrySpeed = trackLookup[nextIdx].targetSpeed + 4.2; // Braking decel rate
+            if (trackLookup[i].targetSpeed > maxEntrySpeed) {
+              trackLookup[i].targetSpeed = maxEntrySpeed;
+            }
+          }
+          // Forward pass to propagate realistic traction acceleration exiting corners
+          for (let i = 0; i < SAMPLES; i++) {
+            const prevIdx = (i - 1 + SAMPLES) % SAMPLES;
+            const maxExitSpeed = trackLookup[prevIdx].targetSpeed + 2.6; // Acceleration rate
+            if (trackLookup[i].targetSpeed > maxExitSpeed) {
+              trackLookup[i].targetSpeed = maxExitSpeed;
+            }
+          }
+        }
+
+        // 2. Build Flat Extruded Asphalt Ribbon + Sector-Colored Neon Rails + Kerbs
+        const halfWidth = 0.21;
+        const asphaltVertices = [];
+        const asphaltColors = [];
+        const asphaltIndices = [];
+
+        const leftRailPts = [];
+        const rightRailPts = [];
+        const s1Pts = [], s2Pts = [], s3Pts = [];
+
+        for (let i = 0; i <= SAMPLES; i++) {
+          const item = trackLookup[i % SAMPLES];
+          const pL = item.pos.clone().addScaledVector(item.binormal, -halfWidth);
+          const pR = item.pos.clone().addScaledVector(item.binormal, halfWidth);
+
+          asphaltVertices.push(pL.x, pL.y, pL.z, pR.x, pR.y, pR.z);
+
+          // Subtle heatmap tint on asphalt (darker in straights, slight cyan/amber in corners)
+          const c = new THREE.Color(0x0b1324);
+          if (item.curvature > 0.35) c.lerp(new THREE.Color(0x1e293b), 0.5);
+          asphaltColors.push(c.r, c.g, c.b, c.r, c.g, c.b);
+
+          leftRailPts.push(pL.clone().add(new THREE.Vector3(0, 0.008, 0)));
+          rightRailPts.push(pR.clone().add(new THREE.Vector3(0, 0.008, 0)));
+
+          const centerHover = item.pos.clone().add(new THREE.Vector3(0, 0.012, 0));
+          if (item.sector === 1) s1Pts.push(centerHover);
+          else if (item.sector === 2) s2Pts.push(centerHover);
+          else s3Pts.push(centerHover);
+
+          if (i < SAMPLES) {
+            const base = i * 2;
+            asphaltIndices.push(base, base + 1, base + 2, base + 1, base + 3, base + 2);
+          }
+        }
+
+        const asphaltGeo = new THREE.BufferGeometry();
+        asphaltGeo.setAttribute('position', new THREE.Float32BufferAttribute(asphaltVertices, 3));
+        asphaltGeo.setAttribute('color', new THREE.Float32BufferAttribute(asphaltColors, 3));
+        asphaltGeo.setIndex(asphaltIndices);
+        asphaltGeo.computeVertexNormals();
+
+        const asphaltMesh = new THREE.Mesh(
+          asphaltGeo,
+          new THREE.MeshStandardMaterial({
+            vertexColors: true,
+            roughness: 0.35,
+            metalness: 0.65,
+            side: THREE.DoubleSide
+          })
+        );
+        trackLayerGroup.add(asphaltMesh);
+
+        // Luminous Track Edges
+        const railMat = new THREE.LineBasicMaterial({ color: 0x475569, transparent: true, opacity: 0.85 });
+        trackLayerGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(leftRailPts), railMat));
+        trackLayerGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(rightRailPts), railMat));
+
+        // 3 FIA Sector Racing Lines (S1 Red, S2 Cyan, S3 Purple)
+        trackLayerGroup.add(new THREE.Line(
+          new THREE.BufferGeometry().setFromPoints(s1Pts),
+          new THREE.LineBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0.9 })
+        ));
+        trackLayerGroup.add(new THREE.Line(
+          new THREE.BufferGeometry().setFromPoints(s2Pts),
+          new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.9 })
+        ));
+        trackLayerGroup.add(new THREE.Line(
+          new THREE.BufferGeometry().setFromPoints(s3Pts),
+          new THREE.LineBasicMaterial({ color: 0xa855f7, transparent: true, opacity: 0.9 })
+        ));
+
+        // 3. FIA Red/White Kerbs (Pianos) in High-Curvature Apexes & Elevation Struts
+        const strutPoints = [];
+        for (let i = 0; i < SAMPLES; i += 6) {
+          const item = trackLookup[i];
+          // Vertical CAD struts from table base (y=0) to elevated track
+          strutPoints.push(
+            new THREE.Vector3(item.pos.x, 0, item.pos.z),
+            new THREE.Vector3(item.pos.x, item.pos.y, item.pos.z)
+          );
+
+          // Add Red/White Apex Kerb blocks where curvature is sharp
+          if (item.curvature > 0.32) {
+            const kerbColor = (i % 12 === 0) ? 0xef4444 : 0xf8fafc;
+            const kerbMesh = new THREE.Mesh(
+              new THREE.BoxGeometry(0.05, 0.015, 0.09),
+              new THREE.MeshBasicMaterial({ color: kerbColor })
+            );
+            const side = item.BinormalSign || 1;
+            const kPos = item.pos.clone().addScaledVector(item.binormal, (halfWidth + 0.025) * side);
+            kPos.y += 0.008;
+            kerbMesh.position.copy(kPos);
+            kerbMesh.lookAt(kPos.clone().add(item.tangent));
+            trackLayerGroup.add(kerbMesh);
+          }
+        }
+        const strutGeo = new THREE.BufferGeometry().setFromPoints(strutPoints);
+        trackLayerGroup.add(new THREE.LineSegments(
+          strutGeo,
+          new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.25 })
+        ));
+
+        // 4. DRS Zones (Glowing Emerald Parallel Rails + Gate Arches)
+        circ.drsZones.forEach(zone => {
+          const drsPtsL = [];
+          const drsPtsR = [];
+          const startIdx = Math.floor(zone[0] * SAMPLES);
+          const endIdx = Math.floor(zone[1] * SAMPLES);
+          for (let i = startIdx; i <= endIdx; i++) {
+            const it = trackLookup[i % SAMPLES];
+            drsPtsL.push(it.pos.clone().addScaledVector(it.binormal, -halfWidth - 0.05).add(new THREE.Vector3(0, 0.02, 0)));
+            drsPtsR.push(it.pos.clone().addScaledVector(it.binormal, halfWidth + 0.05).add(new THREE.Vector3(0, 0.02, 0)));
+          }
+          const drsMat = new THREE.LineBasicMaterial({ color: 0x10b981 });
+          trackLayerGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(drsPtsL), drsMat));
+          trackLayerGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(drsPtsR), drsMat));
+        });
+
+        // 5. Start/Finish Gantry Bridge with 5 Red F1 Start Lights
+        const sfItem = trackLookup[0];
+        const gantryGroup = new THREE.Group();
+        gantryGroup.position.copy(sfItem.pos);
+        gantryGroup.lookAt(sfItem.pos.clone().add(sfItem.tangent));
+
+        const pillarMat = new THREE.MeshBasicMaterial({ color: 0xe2e8f0, wireframe: true });
+        const leftPillar = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.36, 0.04), pillarMat);
+        leftPillar.position.set(-0.28, 0.18, 0);
+        const rightPillar = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.36, 0.04), pillarMat);
+        rightPillar.position.set(0.28, 0.18, 0);
+        const topBeam = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.06, 0.06), new THREE.MeshBasicMaterial({ color: 0x0f172a }));
+        topBeam.position.set(0, 0.36, 0);
+        gantryGroup.add(leftPillar, rightPillar, topBeam);
+
+        for (let l = -2; l <= 2; l++) {
+          const lightDot = new THREE.Mesh(
+            new THREE.SphereGeometry(0.018, 10, 10),
+            new THREE.MeshBasicMaterial({ color: 0xef4444 })
+          );
+          lightDot.position.set(l * 0.08, 0.36, 0.035);
+          gantryGroup.add(lightDot);
+        }
+        trackLayerGroup.add(gantryGroup);
+
+        // 6. Iconic Architectural Wireframe Landmarks per Circuit
+        const landmarkMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, wireframe: true, transparent: true, opacity: 0.24 });
+        if (circuitKey === 'mexico') {
+          // Foro Sol / Estadio GNP Amphitheater surrounding T12-T15
+          const stadiumGeo = new THREE.CylinderGeometry(0.85, 0.52, 0.38, 28, 2, true);
+          const stadiumMesh = new THREE.Mesh(stadiumGeo, landmarkMat);
+          stadiumMesh.position.set(-4.35, 0.20, 0.12);
+          trackLayerGroup.add(stadiumMesh);
+
+          // Main Pit Building along Main Straight
+          const pitBuilding = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.22, 0.32), landmarkMat);
+          pitBuilding.position.set(-0.8, 0.11, -2.42);
+          trackLayerGroup.add(pitBuilding);
+        } else if (circuitKey === 'monaco') {
+          // Monte Carlo Harbor Yachts & Tunnel Canopy
+          for (let y = 0; y < 5; y++) {
+            const yacht = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.34, 4), landmarkMat);
+            yacht.rotation.x = Math.PI / 2;
+            yacht.position.set(-1.2 + y * 0.55, 0.03, 0.35);
+            trackLayerGroup.add(yacht);
+          }
+          const casinoMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.42, 0.36, 16), landmarkMat);
+          casinoMesh.position.set(1.1, 0.65, -1.1);
+          trackLayerGroup.add(casinoMesh);
+        } else if (circuitKey === 'spa') {
+          // Ardennes Elevation Tower & Raidillon Grandstand
+          const eauRougeStand = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.28, 0.28), landmarkMat);
+          eauRougeStand.position.set(-0.9, 0.45, -1.35);
+          eauRougeStand.rotation.z = 0.32;
+          trackLayerGroup.add(eauRougeStand);
+        } else if (circuitKey === 'silverstone') {
+          // The Silverstone Wing Pit Complex
+          const wingMesh = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.26, 0.28), landmarkMat);
+          wingMesh.position.set(-1.5, 0.13, -2.05);
+          wingMesh.rotation.z = 0.08;
+          trackLayerGroup.add(wingMesh);
+        }
+
+        // 7. Create Interactive Corner Markers (3D Laser Pins + DOM Overlay Pins)
+        circ.corners.forEach(c => {
+          const idx = Math.floor(c.u * SAMPLES) % SAMPLES;
+          const pt = trackLookup[idx].pos;
+
+          const pinLineGeo = new THREE.BufferGeometry().setFromPoints([
+            pt,
+            new THREE.Vector3(pt.x, pt.y + 0.38, pt.z)
+          ]);
+          const pinLine = new THREE.Line(
+            pinLineGeo,
+            new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.65 })
+          );
+          trackLayerGroup.add(pinLine);
+
+          const pinDiamond = new THREE.Mesh(
+            new THREE.OctahedronGeometry(0.055, 0),
+            new THREE.MeshBasicMaterial({ color: 0x38bdf8, wireframe: true })
+          );
+          pinDiamond.position.set(pt.x, pt.y + 0.40, pt.z);
+          trackLayerGroup.add(pinDiamond);
+
+          const domPin = document.createElement('div');
+          domPin.className = 'corner-pin';
+          domPin.innerHTML = `<span class="text-sky-400">${c.code}</span> ${c.name} <span class="text-amber-300">${c.apexSpeed}km/h</span>`;
+          cornerLabelsContainer.appendChild(domPin);
+
+          cornerPinObjects.push({
+            worldPos: new THREE.Vector3(pt.x, pt.y + 0.42, pt.z),
+            diamond: pinDiamond,
+            line: pinLine,
+            domEl: domPin
+          });
+        });
+      }
+
+      // -----------------------------------------------------------------------
+      // I. 10 DRIVER TELEMETRY NODES + DYNAMIC LIGHT TRAILS + 3D FLAGS
+      // -----------------------------------------------------------------------
+      const driversGroup = new THREE.Group();
+      f1TableGroup.add(driversGroup);
+
+      const TRAIL_PTS = 42;
+      const driverObjects = {};
+
+      driversData.forEach(d => {
+        const nodeRoot = new THREE.Group();
+
+        // 1. Precision Diamond Telemetry Core
+        const coreMat = new THREE.MeshStandardMaterial({
+          color: d.colorHex,
+          emissive: d.colorHex,
+          emissiveIntensity: 1.5,
+          roughness: 0.15,
+          metalness: 0.3,
+          flatShading: true
+        });
+        const coreMesh = new THREE.Mesh(new THREE.OctahedronGeometry(0.12, 1), coreMat);
+        coreMesh.position.y = 0.08;
+        nodeRoot.add(coreMesh);
+
+        // 2. Braking Thermal Halo Ring (Glows bright red under heavy braking)
+        const brakeHaloMat = new THREE.MeshBasicMaterial({
+          color: 0xef4444,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.0
+        });
+        const brakeHaloMesh = new THREE.Mesh(new THREE.RingGeometry(0.15, 0.24, 24), brakeHaloMat);
+        brakeHaloMesh.rotation.x = Math.PI / 2;
+        brakeHaloMesh.position.y = 0.03;
+        nodeRoot.add(brakeHaloMesh);
+
+        // 3. Selection Target Ring
+        const selRingMat = new THREE.MeshBasicMaterial({
+          color: 0xffffff,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.85
+        });
+        const selRingMesh = new THREE.Mesh(new THREE.RingGeometry(0.20, 0.25, 32), selRingMat);
+        selRingMesh.rotation.x = Math.PI / 2;
+        selRingMesh.position.y = 0.025;
+        nodeRoot.add(selRingMesh);
+
+        // 4. Vertical Laser Stem to 3D Billboard Flag
+        const stemGeo = new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(0, 0.08, 0),
+          new THREE.Vector3(0, 0.56, 0)
+        ]);
+        const stemLine = new THREE.Line(stemGeo, new THREE.LineBasicMaterial({ color: d.colorHex }));
+        nodeRoot.add(stemLine);
+
+        // 5. High-DPI 3D Billboard Flag Sprite (Updates with live Position & Speed)
+        const flagCanv = document.createElement('canvas');
+        flagCanv.width = 280;
+        flagCanv.height = 84;
+        const flagCtx = flagCanv.getContext('2d');
+        const flagTex = new THREE.CanvasTexture(flagCanv);
+        flagTex.minFilter = THREE.LinearFilter;
+        const flagSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: flagTex, depthTest: false }));
+        flagSprite.scale.set(0.96, 0.29, 1);
+        flagSprite.position.set(0, 0.68, 0);
+        nodeRoot.add(flagSprite);
+
+        // 6. Dynamic Light Ribbon Trail along the track spline
+        const trailPositions = new Float32Array(TRAIL_PTS * 3);
+        const trailGeo = new THREE.BufferGeometry();
+        trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPositions, 3));
+        const trailMat = new THREE.LineBasicMaterial({
+          color: d.colorHex,
+          transparent: true,
+          opacity: 0.82
+        });
+        const trailLine = new THREE.Line(trailGeo, trailMat);
+        driversGroup.add(trailLine);
+
+        driversGroup.add(nodeRoot);
+
+        driverObjects[d.id] = {
+          data: d,
+          nodeRoot,
+          coreMesh,
+          brakeHaloMat,
+          selRingMesh,
+          flagCanv,
+          flagCtx,
+          flagTex,
+          flagSprite,
+          trailLine,
+          trailGeo,
+          liveSpeed: 300,
+          liveGear: 8,
+          liveThrottle: 100,
+          liveBrake: 0,
+          liveLatG: 0,
+          liveLonG: 0,
+          liveDrs: false,
+          liveSector: 1,
+          rank: 1
+        };
+      });
+
+      function updateDriverFlagCanvas(obj) {
+        const ctx = obj.flagCtx;
+        const d = obj.data;
+        const isSel = d.id === state.selectedDriverId;
+        ctx.clearRect(0, 0, 280, 84);
+
+        ctx.fillStyle = isSel ? 'rgba(12, 22, 42, 0.96)' : 'rgba(7, 11, 20, 0.88)';
+        ctx.beginPath();
+        ctx.roundRect(4, 4, 272, 76, 14);
+        ctx.fill();
+        ctx.lineWidth = isSel ? 4 : 2.5;
+        ctx.strokeStyle = isSel ? '#38bdf8' : d.colorCss;
+        ctx.stroke();
+
+        // Position Badge
+        ctx.fillStyle = d.colorCss;
+        ctx.fillRect(12, 12, 48, 60);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 24px "JetBrains Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(`P${obj.rank}`, 36, 50);
+
+        // Code & Live Speed
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '800 25px "Inter", sans-serif';
+        ctx.fillText(`${d.code}`, 72, 38);
+
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = '700 20px "JetBrains Mono", monospace';
+        ctx.fillText(`${obj.liveSpeed} km/h`, 72, 66);
+
+        // Tyre Compound Badge
+        const tyreColors = { S: '#ef4444', M: '#facc15', H: '#f8fafc' };
+        ctx.fillStyle = tyreColors[d.tyre] || '#facc15';
+        ctx.beginPath();
+        ctx.arc(246, 32, 14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#04070f';
+        ctx.font = '900 18px "JetBrains Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(d.tyre, 246, 38);
+
+        obj.flagTex.needsUpdate = true;
+      }
+
+      // -----------------------------------------------------------------------
+      // J. TRI-SCREEN 3D HOLOGRAPHIC PIT-WALL COMMAND DECK (IN-WORLD QUEST 3)
+      // -----------------------------------------------------------------------
+      const holoPitWallGroup = new THREE.Group();
+      holoPitWallGroup.position.set(0, 1.55, -2.85);
+      f1TableGroup.add(holoPitWallGroup);
+
+      // Center Screen: Deep Driver Telemetry & G-Force
+      const centerHoloCanv = document.createElement('canvas');
+      centerHoloCanv.width = 768;
+      centerHoloCanv.height = 460;
+      const centerHoloCtx = centerHoloCanv.getContext('2d');
+      const centerHoloTex = new THREE.CanvasTexture(centerHoloCanv);
+      const centerHoloMesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(3.8, 2.28),
+        new THREE.MeshBasicMaterial({ map: centerHoloTex, transparent: true, side: THREE.DoubleSide })
+      );
+      holoPitWallGroup.add(centerHoloMesh);
+
+      // Left Screen: Live Standings & Sector Times
+      const leftHoloCanv = document.createElement('canvas');
+      leftHoloCanv.width = 540;
+      leftHoloCanv.height = 460;
+      const leftHoloCtx = leftHoloCanv.getContext('2d');
+      const leftHoloTex = new THREE.CanvasTexture(leftHoloCanv);
+      const leftHoloMesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(2.68, 2.28),
+        new THREE.MeshBasicMaterial({ map: leftHoloTex, transparent: true, side: THREE.DoubleSide })
+      );
+      leftHoloMesh.position.set(-3.35, 0, 0.55);
+      leftHoloMesh.rotation.y = 0.34;
+      holoPitWallGroup.add(leftHoloMesh);
+
+      // Right Screen: Track Conditions, Tyre Degradation & Head-to-Head Delta
+      const rightHoloCanv = document.createElement('canvas');
+      rightHoloCanv.width = 540;
+      rightHoloCanv.height = 460;
+      const rightHoloCtx = rightHoloCanv.getContext('2d');
+      const rightHoloTex = new THREE.CanvasTexture(rightHoloCanv);
+      const rightHoloMesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(2.68, 2.28),
+        new THREE.MeshBasicMaterial({ map: rightHoloTex, transparent: true, side: THREE.DoubleSide })
+      );
+      rightHoloMesh.position.set(3.35, 0, 0.55);
+      rightHoloMesh.rotation.y = -0.34;
+      holoPitWallGroup.add(rightHoloMesh);
+
+      // Front Tabletop 3D Interactive Buttons for Quest 3 Laser Pointer
+      const xrTableButtons = [];
+      const tableBtnConfigs = [
+        { label: '🇲🇽 CDMX', x: -4.2, color: '#38bdf8', action: () => selectCircuit('mexico') },
+        { label: '🇲🇨 MÓNACO', x: -2.5, color: '#38bdf8', action: () => selectCircuit('monaco') },
+        { label: '🇧🇪 SPA', x: -0.8, color: '#38bdf8', action: () => selectCircuit('spa') },
+        { label: '🇬🇧 SILVERSTONE', x: 0.9, color: '#38bdf8', action: () => selectCircuit('silverstone') },
+        { label: '🟢/🟡 MODO', x: 2.6, color: '#10b981', action: () => document.getElementById('btnRaceState').click() },
+        { label: '⏯ PAUSA', x: 4.2, color: '#f59e0b', action: () => document.getElementById('btnToggleSimPlay').click() }
+      ];
+
+      tableBtnConfigs.forEach(cfg => {
+        const c = document.createElement('canvas');
+        c.width = 256;
+        c.height = 68;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = 'rgba(9, 15, 28, 0.94)';
+        ctx.beginPath();
+        ctx.roundRect(4, 4, 248, 60, 14);
+        ctx.fill();
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = cfg.color;
+        ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 21px "JetBrains Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(cfg.label, 128, 34);
+
+        const tex = new THREE.CanvasTexture(c);
+        const mesh = new THREE.Mesh(
+          new THREE.PlaneGeometry(1.45, 0.38),
+          new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide })
+        );
+        mesh.position.set(cfg.x, 0.16, 3.35);
+        mesh.rotation.x = -0.58;
+        mesh.userData.xrAction = cfg.action;
+        f1TableGroup.add(mesh);
+        xrTableButtons.push(mesh);
+      });
+
+      function renderTriScreenHoloDeck(sortedDrivers) {
+        if (!state.holoWallVisible) return;
+        const selObj = driverObjects[state.selectedDriverId] || driverObjects['VER'];
+        const d = selObj.data;
+        const circ = circuitsData[state.circuitKey];
+
+        // 1. LEFT SCREEN: LIVE TIMING TOWER
+        leftHoloCtx.clearRect(0, 0, 540, 460);
+        leftHoloCtx.fillStyle = 'rgba(8, 13, 25, 0.92)';
+        leftHoloCtx.beginPath();
+        leftHoloCtx.roundRect(8, 8, 524, 444, 20);
+        leftHoloCtx.fill();
+        leftHoloCtx.lineWidth = 3;
+        leftHoloCtx.strokeStyle = '#38bdf8';
+        leftHoloCtx.stroke();
+
+        leftHoloCtx.fillStyle = '#38bdf8';
+        leftHoloCtx.font = 'bold 21px "JetBrains Mono", monospace';
+        leftHoloCtx.fillText(`PIT-WALL TIMING · VUELTA ${circ.currentLap}/${circ.laps}`, 26, 42);
+
+        sortedDrivers.slice(0, 8).forEach((drv, i) => {
+          const y = 82 + i * 45;
+          const isSel = drv.id === state.selectedDriverId;
+          leftHoloCtx.fillStyle = isSel ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255,255,255,0.04)';
+          leftHoloCtx.fillRect(22, y - 28, 496, 38);
+
+          leftHoloCtx.fillStyle = '#facc15';
+          leftHoloCtx.font = 'bold 19px "JetBrains Mono", monospace';
+          leftHoloCtx.fillText(`P${i + 1}`, 32, y - 2);
+
+          leftHoloCtx.fillStyle = drv.colorCss;
+          leftHoloCtx.fillRect(74, y - 20, 6, 24);
+
+          leftHoloCtx.fillStyle = '#ffffff';
+          leftHoloCtx.font = 'bold 19px "Inter", sans-serif';
+          leftHoloCtx.fillText(`${drv.code} #${drv.num}`, 90, y - 2);
+
+          const obj = driverObjects[drv.id];
+          leftHoloCtx.fillStyle = '#7dd3fc';
+          leftHoloCtx.font = '18px "JetBrains Mono", monospace';
+          leftHoloCtx.fillText(`${obj.liveSpeed} km/h`, 215, y - 2);
+
+          const gap = i === 0 ? 'LÍDER' : `+${(i * 0.85).toFixed(3)}s`;
+          leftHoloCtx.fillStyle = i === 0 ? '#10b981' : '#e2e8f0';
+          leftHoloCtx.fillText(`${gap} [${drv.tyre}]`, 355, y - 2);
+        });
+        leftHoloTex.needsUpdate = true;
+
+        // 2. CENTER SCREEN: SELECTED DRIVER DEEP TELEMETRY
+        centerHoloCtx.clearRect(0, 0, 768, 460);
+        centerHoloCtx.fillStyle = 'rgba(8, 13, 25, 0.94)';
+        centerHoloCtx.beginPath();
+        centerHoloCtx.roundRect(8, 8, 752, 444, 22);
+        centerHoloCtx.fill();
+        centerHoloCtx.lineWidth = 4;
+        centerHoloCtx.strokeStyle = d.colorCss;
+        centerHoloCtx.stroke();
+
+        centerHoloCtx.fillStyle = d.colorCss;
+        centerHoloCtx.font = '900 24px "JetBrains Mono", monospace';
+        centerHoloCtx.fillText(`#${d.num} ${d.name.toUpperCase()} · ${d.team.toUpperCase()}`, 30, 48);
+
+        centerHoloCtx.fillStyle = '#ffffff';
+        centerHoloCtx.font = '900 64px "JetBrains Mono", monospace';
+        centerHoloCtx.fillText(`${selObj.liveSpeed}`, 30, 132);
+        centerHoloCtx.font = 'bold 20px "JetBrains Mono", monospace';
+        centerHoloCtx.fillStyle = '#94a3b8';
+        centerHoloCtx.fillText('KM/H', 165, 132);
+
+        centerHoloCtx.fillStyle = '#facc15';
+        centerHoloCtx.font = '900 54px "JetBrains Mono", monospace';
+        centerHoloCtx.fillText(`M${selObj.liveGear}`, 265, 132);
+
+        // Throttle & Brake Bars on Holo Screen
+        centerHoloCtx.fillStyle = '#10b981';
+        centerHoloCtx.font = 'bold 18px "JetBrains Mono", monospace';
+        centerHoloCtx.fillText(`ACELERADOR: ${selObj.liveThrottle}%`, 30, 185);
+        centerHoloCtx.fillStyle = 'rgba(255,255,255,0.12)';
+        centerHoloCtx.fillRect(30, 195, 340, 18);
+        centerHoloCtx.fillStyle = '#10b981';
+        centerHoloCtx.fillRect(30, 195, (selObj.liveThrottle / 100) * 340, 18);
+
+        centerHoloCtx.fillStyle = '#ef4444';
+        centerHoloCtx.fillText(`FRENO HIDRÁULICO: ${selObj.liveBrake}%`, 30, 246);
+        centerHoloCtx.fillStyle = 'rgba(255,255,255,0.12)';
+        centerHoloCtx.fillRect(30, 256, 340, 18);
+        centerHoloCtx.fillStyle = '#ef4444';
+        centerHoloCtx.fillRect(30, 256, (selObj.liveBrake / 100) * 340, 18);
+
+        // Oscilloscope Trace on Center Holo Screen
+        centerHoloCtx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+        centerHoloCtx.strokeRect(30, 300, 708, 125);
+        centerHoloCtx.beginPath();
+        for (let i = 0; i < traceHistory.speed.length; i++) {
+          const tx = 30 + (i / (traceHistory.speed.length - 1)) * 708;
+          const ty = 420 - (traceHistory.speed[i] / 360) * 110;
+          if (i === 0) centerHoloCtx.moveTo(tx, ty);
+          else centerHoloCtx.lineTo(tx, ty);
+        }
+        centerHoloCtx.strokeStyle = '#38bdf8';
+        centerHoloCtx.lineWidth = 3;
+        centerHoloCtx.stroke();
+        centerHoloTex.needsUpdate = true;
+
+        // 3. RIGHT SCREEN: CIRCUIT & HEAD-TO-HEAD TELEMETRY
+        rightHoloCtx.clearRect(0, 0, 540, 460);
+        rightHoloCtx.fillStyle = 'rgba(8, 13, 25, 0.92)';
+        rightHoloCtx.beginPath();
+        rightHoloCtx.roundRect(8, 8, 524, 444, 20);
+        rightHoloCtx.fill();
+        rightHoloCtx.lineWidth = 3;
+        rightHoloCtx.strokeStyle = '#a855f7';
+        rightHoloCtx.stroke();
+
+        rightHoloCtx.fillStyle = '#c084fc';
+        rightHoloCtx.font = 'bold 21px "JetBrains Mono", monospace';
+        rightHoloCtx.fillText('TELEMETRÍA DE NEUMÁTICOS Y PISTA', 26, 44);
+
+        const baseTemp = 92 + Math.floor(selObj.liveSpeed * 0.05);
+        const corners4 = [
+          { lbl: 'FL (Del. Izq)', t: baseTemp + 3 },
+          { lbl: 'FR (Del. Der)', t: baseTemp + 5 },
+          { lbl: 'RL (Tras. Izq)', t: baseTemp - 1 },
+          { lbl: 'RR (Tras. Der)', t: baseTemp + 1 }
+        ];
+        corners4.forEach((c4, idx) => {
+          const cx = idx % 2 === 0 ? 32 : 276;
+          const cy = idx < 2 ? 75 : 175;
+          rightHoloCtx.fillStyle = 'rgba(30, 41, 59, 0.85)';
+          rightHoloCtx.fillRect(cx, cy, 228, 82);
+          rightHoloCtx.fillStyle = '#94a3b8';
+          rightHoloCtx.font = '16px "JetBrains Mono", monospace';
+          rightHoloCtx.fillText(c4.lbl, cx + 14, cy + 28);
+          rightHoloCtx.fillStyle = '#facc15';
+          rightHoloCtx.font = 'bold 26px "JetBrains Mono", monospace';
+          rightHoloCtx.fillText(`${c4.t}°C · ${d.tyreWear}%`, cx + 14, cy + 64);
+        });
+
+        rightHoloCtx.fillStyle = '#e2e8f0';
+        rightHoloCtx.font = '18px "JetBrains Mono", monospace';
+        rightHoloCtx.fillText(`SECTOR ACTIVO: SECTOR ${selObj.liveSector}`, 32, 310);
+        rightHoloCtx.fillStyle = selObj.liveDrs ? '#10b981' : '#94a3b8';
+        rightHoloCtx.fillText(`ESTADO DRS: ${selObj.liveDrs ? 'ALA ABIERTA (+14 KM/H)' : 'CERRADO'}`, 32, 348);
+        rightHoloCtx.fillStyle = '#38bdf8';
+        rightHoloCtx.fillText('QUEST 3: [GATILLO] SELECCIONAR · [GRIP] MOVER', 32, 410);
+        rightHoloTex.needsUpdate = true;
+      }
+
+      // -----------------------------------------------------------------------
+      // K. QUEST 3 CONTROLLERS (LASER RAYCASTER + SQUEEZE GRAB)
+      // -----------------------------------------------------------------------
+      const xrRaycaster = new THREE.Raycaster();
+      const xrTempMat = new THREE.Matrix4();
+      let grabbingCtrl = null;
+      const grabOffset = new THREE.Vector3();
+
+      function getInteractiveMeshes() {
+        const driverCores = Object.values(driverObjects).map(o => o.coreMesh);
+        return driverCores.concat(xrTableButtons);
+      }
+
+      function onXRSelect(event) {
+        const ctrl = event.target;
+        xrTempMat.identity().extractRotation(ctrl.matrixWorld);
+        xrRaycaster.ray.origin.setFromMatrixPosition(ctrl.matrixWorld);
+        xrRaycaster.ray.direction.set(0, 0, -1).applyMatrix4(xrTempMat);
+
+        const hits = xrRaycaster.intersectObjects(getInteractiveMeshes(), false);
+        if (hits.length > 0) {
+          const hitMesh = hits[0].object;
+          if (hitMesh.userData && hitMesh.userData.xrAction) {
+            playPitTone(980, 0.045);
+            hitMesh.userData.xrAction();
+          } else {
+            const found = Object.values(driverObjects).find(o => o.coreMesh === hitMesh);
+            if (found) {
+              playPitTone(820, 0.045);
+              selectDriver(found.data.id);
+            }
+          }
+          if (event.data && event.data.gamepad && event.data.gamepad.hapticActuators && event.data.gamepad.hapticActuators[0]) {
+            try { event.data.gamepad.hapticActuators[0].pulse(0.7, 40); } catch (e) {}
+          }
+        }
+      }
+
+      function onXRSqueezeStart(event) {
+        grabbingCtrl = event.target;
+        const cPos = new THREE.Vector3().setFromMatrixPosition(grabbingCtrl.matrixWorld);
+        grabOffset.copy(f1TableGroup.position).sub(cPos);
+        playPitTone(520, 0.05);
+      }
+      function onXRSqueezeEnd(event) {
+        if (grabbingCtrl === event.target) grabbingCtrl = null;
+      }
+
+      for (let i = 0; i < 2; i++) {
+        const ctrl = renderer.xr.getController(i);
+        ctrl.addEventListener('select', onXRSelect);
+        ctrl.addEventListener('squeezestart', onXRSqueezeStart);
+        ctrl.addEventListener('squeezeend', onXRSqueezeEnd);
+
+        const laserGeo = new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(0, 0, 0),
+          new THREE.Vector3(0, 0, -1)
+        ]);
+        const laserLine = new THREE.Line(
+          laserGeo,
+          new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.88 })
+        );
+        laserLine.scale.z = 2.6;
+        ctrl.add(laserLine);
+        scene.add(ctrl);
+      }
+
+      // -----------------------------------------------------------------------
+      // L. 2D VIEWPORT POINTER, TOUCH & PINCH INTERACTION
+      // -----------------------------------------------------------------------
+      let isDragging = false;
+      let prevX = 0, prevY = 0;
+      const raycaster2D = new THREE.Raycaster();
+      const mouseVec = new THREE.Vector2();
+
+      canvas.addEventListener('pointerdown', (e) => {
+        isDragging = true;
+        prevX = e.clientX;
+        prevY = e.clientY;
+
+        const rect = canvas.getBoundingClientRect();
+        mouseVec.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouseVec.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster2D.setFromCamera(mouseVec, camera);
+
+        const hits = raycaster2D.intersectObjects(getInteractiveMeshes(), false);
+        if (hits.length > 0) {
+          const hitMesh = hits[0].object;
+          if (hitMesh.userData && hitMesh.userData.xrAction) {
+            playPitTone(980, 0.045);
+            hitMesh.userData.xrAction();
+          } else {
+            const found = Object.values(driverObjects).find(o => o.coreMesh === hitMesh);
+            if (found) {
+              playPitTone(820, 0.045);
+              selectDriver(found.data.id);
+            }
+          }
+        }
+      });
+
+      canvas.addEventListener('pointermove', (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - prevX;
+        const dy = e.clientY - prevY;
+        prevX = e.clientX;
+        prevY = e.clientY;
+        state.targetYaw += dx * 0.0075;
+        state.targetPitch = Math.max(0.15, Math.min(1.28, state.targetPitch + dy * 0.0075));
+      });
+      canvas.addEventListener('pointerup', () => { isDragging = false; });
+      canvas.addEventListener('pointercancel', () => { isDragging = false; });
+
+      canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        state.targetZoom = Math.max(6.5, Math.min(24.0, state.targetZoom + e.deltaY * 0.008));
+      }, { passive: false });
+
+      // -----------------------------------------------------------------------
+      // M. 2D CANVAS TELEMETRY OSCILLOSCOPE & G-FORCE VECTOR METER
+      // -----------------------------------------------------------------------
+      const gForceCanv = document.getElementById('gForceCanvas');
+      const gForceCtx = gForceCanv.getContext('2d');
+      const traceCanv = document.getElementById('telemetryTraceCanvas');
+      const traceCtx = traceCanv.getContext('2d');
+
+      function draw2dTelemetryWidgets(selObj) {
+        // 1. G-Force Circle
+        const w = gForceCanv.width;
+        const h = gForceCanv.height;
+        const cx = w / 2;
+        const cy = h / 2;
+        gForceCtx.clearRect(0, 0, w, h);
+
+        gForceCtx.strokeStyle = 'rgba(148, 163, 184, 0.28)';
+        gForceCtx.lineWidth = 1;
+        [16, 32].forEach(r => {
+          gForceCtx.beginPath();
+          gForceCtx.arc(cx, cy, r, 0, Math.PI * 2);
+          gForceCtx.stroke();
+        });
+        gForceCtx.beginPath();
+        gForceCtx.moveTo(cx - 34, cy);
+        gForceCtx.lineTo(cx + 34, cy);
+        gForceCtx.moveTo(cx, cy - 34);
+        gForceCtx.lineTo(cx, cy + 34);
+        gForceCtx.stroke();
+
+        const gx = cx + Math.max(-30, Math.min(30, selObj.liveLatG * 6.5));
+        const gy = cy + Math.max(-30, Math.min(30, selObj.liveLonG * 6.5));
+
+        gForceCtx.strokeStyle = '#38bdf8';
+        gForceCtx.lineWidth = 2;
+        gForceCtx.beginPath();
+        gForceCtx.moveTo(cx, cy);
+        gForceCtx.lineTo(gx, gy);
+        gForceCtx.stroke();
+
+        gForceCtx.fillStyle = '#f87171';
+        gForceCtx.beginPath();
+        gForceCtx.arc(gx, gy, 4.5, 0, Math.PI * 2);
+        gForceCtx.fill();
+
+        const totalG = Math.hypot(selObj.liveLatG, selObj.liveLonG).toFixed(1);
+        document.getElementById('lblGForcePeak').textContent = `${totalG}G`;
+
+        // 2. Live Oscilloscope Trace (Speed = Cyan, Throttle = Emerald, Brake = Red)
+        const tw = traceCanv.width;
+        const th = traceCanv.height;
+        traceCtx.clearRect(0, 0, tw, th);
+
+        // Grid lines
+        traceCtx.strokeStyle = 'rgba(255,255,255,0.06)';
+        traceCtx.lineWidth = 1;
+        traceCtx.beginPath();
+        traceCtx.moveTo(0, th * 0.5);
+        traceCtx.lineTo(tw, th * 0.5);
+        traceCtx.stroke();
+
+        function plotSeries(arr, maxVal, color, lineWidth) {
+          traceCtx.beginPath();
+          for (let i = 0; i < arr.length; i++) {
+            const x = (i / (arr.length - 1)) * tw;
+            const y = th - 4 - (arr[i] / maxVal) * (th - 8);
+            if (i === 0) traceCtx.moveTo(x, y);
+            else traceCtx.lineTo(x, y);
+          }
+          traceCtx.strokeStyle = color;
+          traceCtx.lineWidth = lineWidth;
+          traceCtx.stroke();
+        }
+
+        plotSeries(traceHistory.throttle, 100, 'rgba(16, 185, 129, 0.65)', 1.5);
+        plotSeries(traceHistory.brake, 100, 'rgba(239, 68, 68, 0.75)', 1.5);
+        plotSeries(traceHistory.speed, 350, '#38bdf8', 2.2);
+      }
+
+      // -----------------------------------------------------------------------
+      // N. DRIVER SELECTION, TIMING TOWER & MODALS
+      // -----------------------------------------------------------------------
+      function selectDriver(driverId) {
+        state.selectedDriverId = driverId;
+        const obj = driverObjects[driverId];
+        if (!obj) return;
+        const d = obj.data;
+
+        document.getElementById('telDriverName').textContent = `${d.name} (${d.code})`;
+        document.getElementById('telDriverNum').textContent = `#${d.num}`;
+        document.getElementById('telTeamName').textContent = d.team;
+        document.getElementById('telTeamColorDot').style.backgroundColor = d.colorCss;
+        document.getElementById('telTeamColorDot').style.boxShadow = `0 0 12px ${d.colorCss}`;
+
+        const tyreLabels = {
+          S: { txt: '🔴 BLANDO', cls: 'px-1.5 py-0.5 rounded bg-red-500/20 border border-red-400 text-red-300 font-bold' },
+          M: { txt: '🟡 MEDIO',  cls: 'px-1.5 py-0.5 rounded bg-yellow-500/20 border border-yellow-400 text-yellow-300 font-bold' },
+          H: { txt: '⚪ DURO',   cls: 'px-1.5 py-0.5 rounded bg-slate-200/20 border border-slate-300 text-slate-100 font-bold' }
+        };
+        const tInfo = tyreLabels[d.tyre] || tyreLabels.M;
+        const tyreBadge = document.getElementById('telTyre');
+        tyreBadge.className = tInfo.cls;
+        tyreBadge.textContent = `${tInfo.txt} (${d.tyreWear}%)`;
+      }
+
+      function selectCircuit(circuitKey) {
+        buildPrecisionCircuit(circuitKey);
+        document.querySelectorAll('.circuit-btn').forEach(b => {
+          if (b.getAttribute('data-circuit') === circuitKey) {
+            b.className = 'circuit-btn shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold mono flex items-center gap-1.5 bg-sky-400 text-slate-950 border border-sky-200 shadow-[0_0_14px_rgba(56,189,248,0.5)]';
+          } else {
+            b.className = 'circuit-btn shrink-0 px-2.5 py-1 rounded-full text-[10px] font-medium mono flex items-center gap-1.5 bg-black/80 text-slate-200 border border-white/15';
+          }
+        });
+      }
+
+      // Populate Head-to-Head selects
+      const selA = document.getElementById('selCompareA');
+      const selB = document.getElementById('selCompareB');
+      driversData.forEach(d => {
+        selA.innerHTML += `<option value="${d.id}">#${d.num} ${d.name} (${d.team})</option>`;
+        selB.innerHTML += `<option value="${d.id}">#${d.num} ${d.name} (${d.team})</option>`;
+      });
+      selA.value = 'VER';
+      selB.value = 'NOR';
+
+      function renderHeadToHeadModal() {
+        const dA = driversData.find(d => d.id === selA.value) || driversData[0];
+        const dB = driversData.find(d => d.id === selB.value) || driversData[1];
+        const oA = driverObjects[dA.id];
+        const oB = driverObjects[dB.id];
+
+        const container = document.getElementById('headToHeadContent');
+        container.innerHTML = `
+          <div class="grid grid-cols-3 gap-2 text-center mono text-xs hud-card-inner rounded-xl p-3">
+            <div class="text-left">
+              <span class="px-2 py-0.5 rounded font-black text-white" style="background:${dA.colorCss}">${dA.code} #${dA.num}</span>
+              <div class="font-bold text-white mt-1">${dA.name}</div>
+            </div>
+            <div class="text-slate-400 self-center font-bold">MÉTRICA EN PISTA</div>
+            <div class="text-right">
+              <span class="px-2 py-0.5 rounded font-black text-white" style="background:${dB.colorCss}">${dB.code} #${dB.num}</span>
+              <div class="font-bold text-white mt-1">${dB.name}</div>
+            </div>
+
+            <div class="font-black text-lg text-sky-300 text-left">${oA.liveSpeed} km/h</div>
+            <div class="text-[10px] text-slate-400 self-center">VELOCIDAD INSTANTÁNEA</div>
+            <div class="font-black text-lg text-sky-300 text-right">${oB.liveSpeed} km/h</div>
+
+            <div class="font-bold text-white text-left">${dA.topSpeed} km/h</div>
+            <div class="text-[10px] text-slate-400 self-center">VELOCIDAD PUNTA (SPEED TRAP)</div>
+            <div class="font-bold text-white text-right">${dB.topSpeed} km/h</div>
+
+            <div class="font-bold text-emerald-300 text-left">${dA.tyre} (${dA.tyreWear}%)</div>
+            <div class="text-[10px] text-slate-400 self-center">COMPUESTO Y VIDA ÚTIL</div>
+            <div class="font-bold text-emerald-300 text-right">${dB.tyre} (${dB.tyreWear}%)</div>
+
+            <div class="font-bold text-amber-300 text-left">${dA.ers}% SOC</div>
+            <div class="text-[10px] text-slate-400 self-center">ENERGÍA ERS DISPONIBLE</div>
+            <div class="font-bold text-amber-300 text-right">${dB.ers}% SOC</div>
+          </div>
+        `;
+      }
+
+      function renderStrategyModal() {
+        const circ = circuitsData[state.circuitKey];
+        const container = document.getElementById('strategyModalBody');
+        container.innerHTML = `
+          <div class="hud-card-inner rounded-xl p-3 flex flex-wrap items-center justify-between gap-2 mono">
+            <div><span class="text-slate-400">CIRCUITO:</span> <strong class="text-sky-300">${circ.name}</strong></div>
+            <div><span class="text-slate-400">DETALLES:</span> <strong class="text-white">${circ.meta}</strong></div>
+          </div>
+          <div class="overflow-x-auto rounded-xl border border-white/10">
+            <table class="w-full text-left border-collapse mono text-[11px]">
+              <thead>
+                <tr class="bg-black/80 text-slate-300 border-b border-white/10">
+                  <th class="py-2 px-3">Piloto</th>
+                  <th class="py-2 px-3">Escudería</th>
+                  <th class="py-2 px-3">Compuesto Actual</th>
+                  <th class="py-2 px-3">Vida Neumático</th>
+                  <th class="py-2 px-3">Paradas</th>
+                  <th class="py-2 px-3">Ventana Óptima Pit</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-white/10">
+                ${driversData.map(d => `
+                  <tr class="hover:bg-white/5">
+                    <td class="py-2 px-3 font-bold text-white"><span class="inline-block w-2 h-2 rounded-full mr-1.5" style="background:${d.colorCss}"></span>#${d.num} ${d.name}</td>
+                    <td class="py-2 px-3 text-slate-300">${d.team}</td>
+                    <td class="py-2 px-3 font-bold ${d.tyre === 'S' ? 'text-red-400' : (d.tyre === 'M' ? 'text-yellow-300' : 'text-slate-100')}">${d.tyre === 'S' ? '🔴 Blando (C5)' : (d.tyre === 'M' ? '🟡 Medio (C4)' : '⚪ Duro (C3)')}</td>
+                    <td class="py-2 px-3 text-emerald-300 font-bold">${d.tyreWear}%</td>
+                    <td class="py-2 px-3 text-slate-200">${d.stops} parada(s)</td>
+                    <td class="py-2 px-3 text-sky-300">Vuelta ${circ.currentLap + Math.floor(d.tyreWear / 9)}–${circ.currentLap + Math.floor(d.tyreWear / 7)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      // -----------------------------------------------------------------------
+      // O. MAIN WEBXR ANIMATION & PHYSICS TELEMETRY LOOP
+      // -----------------------------------------------------------------------
+      let lastTime = performance.now();
+      let uiThrottleCounter = 0;
+
+      function animate(timestamp) {
+        const now = (typeof timestamp === 'number') ? timestamp : performance.now();
+        const dt = Math.min(0.05, Math.max(0.001, (now - lastTime) / 1000));
+        lastTime = now;
+
+        const isPresentingXR = renderer.xr.isPresenting;
+
+        // 1. Update Spatial Table Pose & Controller Thumbstick Rotation
+        if (isPresentingXR && grabbingCtrl) {
+          const cPos = new THREE.Vector3().setFromMatrixPosition(grabbingCtrl.matrixWorld);
+          f1TableGroup.position.copy(cPos).add(grabOffset);
+          state.xrPosX = f1TableGroup.position.x;
+          state.xrPosY = f1TableGroup.position.y;
+          state.xrPosZ = f1TableGroup.position.z;
+        } else {
+          f1TableGroup.position.set(state.xrPosX, state.xrPosY, state.xrPosZ);
+        }
+        f1TableGroup.scale.setScalar(state.xrScale);
+        holoPitWallGroup.visible = state.holoWallVisible;
+
+        if (isPresentingXR) {
+          const session = renderer.xr.getSession();
+          if (session && session.inputSources) {
+            for (const src of session.inputSources) {
+              if (src.gamepad && src.gamepad.axes && src.gamepad.axes.length >= 4) {
+                const axX = src.gamepad.axes[2];
+                if (Math.abs(axX) > 0.15) f1TableGroup.rotation.y += axX * dt * 1.6;
+              }
+            }
+          }
+        } else {
+          state.yaw += (state.targetYaw - state.yaw) * 0.12;
+          state.pitch += (state.targetPitch - state.pitch) * 0.12;
+          state.zoom += (state.targetZoom - state.zoom) * 0.12;
+
+          if (state.followCam) {
+            const selObj = driverObjects[state.selectedDriverId];
+            if (selObj) {
+              const worldTarget = new THREE.Vector3();
+              selObj.coreMesh.getWorldPosition(worldTarget);
+              camera.position.lerp(
+                new THREE.Vector3(worldTarget.x + 0.35, worldTarget.y + 0.32, worldTarget.z + 0.45),
+                0.1
+              );
+              camera.lookAt(worldTarget);
+            }
+          } else {
+            camera.position.set(
+              state.xrPosX + Math.sin(state.yaw) * state.zoom * 0.16,
+              state.xrPosY + Math.sin(state.pitch) * state.zoom * 0.15,
+              state.xrPosZ + Math.cos(state.yaw) * Math.cos(state.pitch) * state.zoom * 0.16
+            );
+            camera.lookAt(state.xrPosX, state.xrPosY + 0.08, state.xrPosZ);
+          }
+        }
+
+        // 2. Advance Drivers with Real Cornering Speed Profile & Update Trails
+        if (trackLookup.length === SAMPLES) {
+          const modeMultiplier = state.raceMode === 'sc' ? 0.52 : (state.raceMode === 'drs_battle' ? 1.12 : 1.0);
+
+          driversData.forEach(d => {
+            const obj = driverObjects[d.id];
+            const idx = Math.floor(d.u * SAMPLES) % SAMPLES;
+            const nextIdx = (idx + 1) % SAMPLES;
+            const prevIdx = (idx - 1 + SAMPLES) % SAMPLES;
+            const tSample = trackLookup[idx];
+            const nextSample = trackLookup[nextIdx];
+
+            // Compute instantaneous speed (km/h)
+            const targetKmh = Math.min(d.topSpeed, tSample.targetSpeed * d.paceFactor * modeMultiplier);
+            obj.liveSpeed = Math.round(targetKmh);
+
+            if (state.simRunning) {
+              // Convert km/h to normalized spline progress u per second
+              const uSpeed = (targetKmh / 315) * 0.042 * state.simSpeed;
+              d.u = (d.u + uSpeed * dt) % 1.0;
+            }
+
+            // Compute Throttle, Brake, Gear, Longitudinal & Lateral G
+            const speedDelta = nextSample.targetSpeed - tSample.targetSpeed;
+            if (speedDelta < -1.2) {
+              obj.liveBrake = Math.min(100, Math.round(Math.abs(speedDelta) * 18));
+              obj.liveThrottle = Math.max(0, 15 - Math.round(obj.liveBrake * 0.15));
+              obj.liveLonG = -(obj.liveBrake / 100) * 4.8; // Braking G
+            } else {
+              obj.liveBrake = 0;
+              obj.liveThrottle = Math.min(100, Math.round(68 + (obj.liveSpeed / 335) * 32));
+              obj.liveLonG = (obj.liveThrottle / 100) * 1.6;
+            }
+            obj.liveLatG = (tSample.curvature * (obj.liveSpeed / 260) * 4.6) * (idx % 2 === 0 ? 1 : -1);
+            obj.liveGear = Math.max(2, Math.min(8, Math.floor(obj.liveSpeed / 41) + 1));
+            obj.liveDrs = tSample.isDrs && state.raceMode !== 'sc';
+            obj.liveSector = tSample.sector;
+
+            // Update 3D Node Position & Braking Thermal Halo
+            const exactPos = currentSpline.getPointAt(d.u);
+            obj.nodeRoot.position.copy(exactPos);
+            obj.coreMesh.rotation.y += 0.04;
+            obj.brakeHaloMat.opacity = (obj.liveBrake / 100) * 0.85;
+
+            const isSel = d.id === state.selectedDriverId;
+            obj.selRingMesh.visible = isSel;
+            obj.coreMesh.scale.setScalar(isSel ? 1.42 : 1.0);
+
+            // Update 42-Segment Light Ribbon Trail Behind Driver
+            const posAttr = obj.trailGeo.getAttribute('position');
+            const trailArc = 0.055 * state.trailLengthFactor;
+            for (let t = 0; t < TRAIL_PTS; t++) {
+              const tu = (d.u - (t / (TRAIL_PTS - 1)) * trailArc + 1.0) % 1.0;
+              const tp = currentSpline.getPointAt(tu);
+              posAttr.setXYZ(t, tp.x, tp.y + 0.025, tp.z);
+            }
+            posAttr.needsUpdate = true;
+          });
+        }
+
+        // 3. Throttled UI, Oscilloscope, 3D Flags & Holo-Wall Refresh (~12 Hz)
+        uiThrottleCounter++;
+        if (uiThrottleCounter % 5 === 0) {
+          const sorted = [...driversData].sort((a, b) => b.u - a.u);
+          sorted.forEach((d, idx) => {
+            driverObjects[d.id].rank = idx + 1;
+            updateDriverFlagCanvas(driverObjects[d.id]);
+          });
+
+          // Update DOM Timing Tower
+          const listEl = document.getElementById('timingTowerList');
+          listEl.innerHTML = sorted.map((d, i) => {
+            const isSel = d.id === state.selectedDriverId;
+            const gapStr = i === 0 ? 'LÍDER' : `+${((sorted[0].u - d.u + 1.0) % 1.0 * 78.4).toFixed(3)}s`;
+            const tyreBadgeColor = d.tyre === 'S' ? 'text-red-400 border-red-400/50' : (d.tyre === 'M' ? 'text-yellow-300 border-yellow-400/50' : 'text-slate-100 border-slate-300/50');
+            return `
+              <div data-drv="${d.id}" class="grid grid-cols-12 items-center py-1 px-1.5 rounded-lg cursor-pointer transition ${isSel ? 'bg-sky-500/25 border border-sky-400/50 font-bold' : 'hover:bg-white/5'}">
+                <span class="col-span-2 text-amber-400 font-bold">P${i + 1}</span>
+                <span class="col-span-4 flex items-center gap-1.5 text-white truncate">
+                  <span class="w-1.5 h-3.5 rounded-sm shrink-0" style="background:${d.colorCss}"></span>
+                  <span>${d.code}</span>
+                </span>
+                <span class="col-span-4 text-right text-[9.5px] ${i === 0 ? 'text-emerald-300 font-bold' : 'text-slate-300'}">${gapStr}</span>
+                <span class="col-span-2 text-right">
+                  <span class="px-1 py-0.2 rounded border text-[8.5px] font-bold ${tyreBadgeColor}">${d.tyre}</span>
+                </span>
+              </div>
+            `;
+          }).join('');
+
+          listEl.querySelectorAll('[data-drv]').forEach(row => {
+            row.addEventListener('click', () => {
+              selectDriver(row.getAttribute('data-drv'));
+              playPitTone(840, 0.04);
+            });
+          });
+
+          // Update Selected Driver Inspector HUD & Oscilloscope Buffer
+          const selObj = driverObjects[state.selectedDriverId] || driverObjects['VER'];
+          traceHistory.speed.push(selObj.liveSpeed);
+          traceHistory.speed.shift();
+          traceHistory.throttle.push(selObj.liveThrottle);
+          traceHistory.throttle.shift();
+          traceHistory.brake.push(selObj.liveBrake);
+          traceHistory.brake.shift();
+
+          const rpmFraction = Math.min(1.0, Math.max(0.2, (selObj.liveSpeed % 48) / 44));
+          const activeLeds = Math.round(rpmFraction * 15);
+          rpmLedEls.forEach((led, idx) => {
+            if (idx < activeLeds) {
+              led.className = idx < 5
+                ? 'h-full rounded-sm bg-emerald-400 shadow-[0_0_6px_#34d399]'
+                : (idx < 10 ? 'h-full rounded-sm bg-red-500 shadow-[0_0_6px_#ef4444]' : 'h-full rounded-sm bg-purple-400 shadow-[0_0_8px_#c084fc]');
+            } else {
+              led.className = 'h-full rounded-sm bg-slate-800';
+            }
+          });
+
+          const rpmK = (9.4 + rpmFraction * 3.1).toFixed(1);
+          document.getElementById('telPosition').textContent = `P${selObj.rank}`;
+          document.getElementById('telInterval').textContent = selObj.rank === 1
+            ? 'LÍDER EN PISTA'
+            : `+${(((sorted[0].u - selObj.data.u + 1.0) % 1.0) * 78.4).toFixed(3)}s`;
+          document.getElementById('telSpeed').innerHTML = `${selObj.liveSpeed} <span class="text-[9px] text-slate-400">km/h</span>`;
+          document.getElementById('telGearRpm').innerHTML = `${selObj.liveGear}ª <span class="text-[9px] text-amber-300">${rpmK}k</span>`;
+          document.getElementById('telErsSoc').innerHTML = `${selObj.data.ers}% <span class="text-[8.5px] text-slate-400">${selObj.liveDrs ? 'OVERTAKE' : 'AUTO'}</span>`;
+
+          document.getElementById('barThrottle').style.width = `${selObj.liveThrottle}%`;
+          document.getElementById('lblThrottle').textContent = `${selObj.liveThrottle}%`;
+          document.getElementById('barBrake').style.width = `${selObj.liveBrake}%`;
+          document.getElementById('lblBrake').textContent = `${selObj.liveBrake}%`;
+
+          const drsEl = document.getElementById('telDrsBadge');
+          drsEl.textContent = selObj.liveDrs ? 'DRS ACTIVO (+14 KM/H)' : 'DRS CERRADO';
+          drsEl.className = selObj.liveDrs
+            ? 'px-1.5 py-0.5 rounded bg-emerald-950/90 border border-emerald-400 text-emerald-300 font-bold text-[9px] animate-pulse'
+            : 'px-1.5 py-0.5 rounded bg-slate-800/80 border border-slate-600 text-slate-400 font-bold text-[9px]';
+
+          document.getElementById('telSectorBadge').textContent = `SECTOR ${selObj.liveSector}`;
+
+          // Find nearest corner label
+          const circ = circuitsData[state.circuitKey];
+          let nearestCorner = 'RECTA / TRACCIÓN';
+          circ.corners.forEach(c => {
+            if (Math.abs(c.u - selObj.data.u) < 0.06) {
+              nearestCorner = `${c.code}: ${c.name.toUpperCase()}`;
+            }
+          });
+          document.getElementById('telCornerStatus').textContent = nearestCorner;
+
+          draw2dTelemetryWidgets(selObj);
+          renderTriScreenHoloDeck(sorted);
+        }
+
+        // 4. Project 3D Corner Pins to 2D Viewport when not in XR
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const tempV = new THREE.Vector3();
+        cornerPinObjects.forEach(cp => {
+          cp.diamond.rotation.y += 0.025;
+          cp.diamond.visible = state.cornerPinsVisible;
+          cp.line.visible = state.cornerPinsVisible;
+          if (!state.cornerPinsVisible || isPresentingXR) {
+            cp.domEl.style.display = 'none';
+            return;
+          }
+          f1TableGroup.localToWorld(tempV.copy(cp.worldPos));
+          tempV.project(camera);
+          const sx = (tempV.x * 0.5 + 0.5) * w;
+          const sy = (-tempV.y * 0.5 + 0.5) * h;
+          if (tempV.z > 1 || sx < 40 || sx > w - 40 || sy < 85 || sy > h - 100) {
+            cp.domEl.style.display = 'none';
+          } else {
+            cp.domEl.style.display = 'block';
+            cp.domEl.style.left = `${sx.toFixed(1)}px`;
+            cp.domEl.style.top = `${sy.toFixed(1)}px`;
+          }
+        });
+
+        renderer.render(scene, camera);
+      }
+
+      function resize() {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        renderer.setSize(w, h, false);
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+      }
+      window.addEventListener('resize', resize);
+      resize();
+
+      // -----------------------------------------------------------------------
+      // P. UI EVENT LISTENERS
+      // -----------------------------------------------------------------------
+      document.querySelectorAll('.circuit-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          selectCircuit(btn.getAttribute('data-circuit'));
+          playPitTone(980, 0.045);
+        });
+      });
+
+      document.getElementById('btnRaceState').addEventListener('click', () => {
+        const modes = ['green', 'drs_battle', 'sc'];
+        const next = modes[(modes.indexOf(state.raceMode) + 1) % modes.length];
+        state.raceMode = next;
+        const badge = document.getElementById('raceFlagBadge');
+        const icon = document.getElementById('raceStateIcon');
+        const txt = document.getElementById('raceStateText');
+
+        if (next === 'green') {
+          badge.className = 'mono text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400/40';
+          badge.textContent = '● PISTA VERDE · DRS HABILITADO';
+          icon.textContent = '🟢';
+          txt.textContent = 'Ritmo Carrera';
+        } else if (next === 'drs_battle') {
+          badge.className = 'mono text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-purple-500/25 text-purple-300 border border-purple-400/50 animate-pulse';
+          badge.textContent = '⚡ BATALLA DRS · REBUFO Y ATAQUE ERS';
+          icon.textContent = '🟣';
+          txt.textContent = 'Ataque DRS';
+        } else {
+          badge.className = 'mono text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-amber-500/25 text-amber-300 border border-amber-400/50 animate-pulse';
+          badge.textContent = '⚠️ SAFETY CAR EN PISTA · DELTA REDUCIDO';
+          icon.textContent = '🟡';
+          txt.textContent = 'Safety Car';
+        }
+        playPitTone(760, 0.05);
+      });
+
+      document.getElementById('btnToggle3dWall').addEventListener('click', () => {
+        state.holoWallVisible = !state.holoWallVisible;
+        document.getElementById('lbl3dWall').textContent = state.holoWallVisible ? 'Pantallas 3D: ON' : 'Pantallas 3D: OFF';
+        playPitTone(680, 0.04);
+      });
+
+      document.getElementById('btnToggleCornerPins').addEventListener('click', () => {
+        state.cornerPinsVisible = !state.cornerPinsVisible;
+        document.getElementById('lblCornerPins').textContent = state.cornerPinsVisible ? 'Curvas' : 'Ocultas';
+      });
+
+      const settingsDrawer = document.getElementById('xrSettingsDrawer');
+      document.getElementById('btnToggleSettings').addEventListener('click', () => {
+        state.settingsOpen = !state.settingsOpen;
+        settingsDrawer.classList.toggle('hidden', !state.settingsOpen);
+      });
+      document.getElementById('btnCloseSettings').addEventListener('click', () => {
+        state.settingsOpen = false;
+        settingsDrawer.classList.add('hidden');
+      });
+
+      document.querySelectorAll('.theme-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const tKey = btn.getAttribute('data-theme');
+          const th = themes[tKey] || themes.stark;
+          state.themeKey = th.key;
+          document.documentElement.style.setProperty('--bg-base', th.bgBase);
+          document.documentElement.style.setProperty('--hud-bg', th.hudBg);
+          document.documentElement.style.setProperty('--hud-border', th.hudBorder);
+          document.documentElement.style.setProperty('--accent-primary', th.accentPrimary);
+          baseDiscMat.color.setHex(th.tableBaseColor);
+          outerNeonRingMat.color.setHex(th.ringGlow);
+          tableGlowLight.color.setHex(th.ringGlow);
+          pedestalGroup.remove(tableGridHelper);
+          tableGridHelper = new THREE.GridHelper(11.6, 28, th.gridColorA, th.gridColorB);
+          tableGridHelper.position.y = -0.002;
+          pedestalGroup.add(tableGridHelper);
+
+          document.querySelectorAll('.theme-btn').forEach(b => {
+            b.className = b === btn
+              ? 'theme-btn py-1.5 px-2 rounded-lg bg-white text-black font-bold flex items-center gap-1.5'
+              : 'theme-btn py-1.5 px-2 rounded-lg bg-black/60 text-slate-300 border border-white/10 flex items-center gap-1.5';
+          });
+        });
+      });
+
+      document.getElementById('sliderXrScale').addEventListener('input', (e) => {
+        state.xrScale = parseInt(e.target.value, 10) / 100;
+        document.getElementById('lblXrScaleVal').textContent = `${state.xrScale.toFixed(2)}x (~${(state.xrScale * 8.2).toFixed(1)}m)`;
+      });
+      document.getElementById('sliderXrHeight').addEventListener('input', (e) => {
+        state.xrPosY = parseInt(e.target.value, 10) / 100;
+        document.getElementById('lblXrHeightVal').textContent = `${state.xrPosY.toFixed(2)}m`;
+      });
+      document.getElementById('sliderXrDepth').addEventListener('input', (e) => {
+        state.xrPosZ = -parseInt(e.target.value, 10) / 100;
+        document.getElementById('lblXrDepthVal').textContent = `${state.xrPosZ.toFixed(2)}m`;
+      });
+      document.getElementById('sliderTrailLen').addEventListener('input', (e) => {
+        state.trailLengthFactor = parseInt(e.target.value, 10) / 100;
+        document.getElementById('lblTrailLenVal').textContent = `${e.target.value}%`;
+      });
+      document.getElementById('btnResetXrTable').addEventListener('click', () => {
+        state.xrScale = 0.16;
+        state.xrPosX = 0.0;
+        state.xrPosY = 0.95;
+        state.xrPosZ = -0.95;
+        document.getElementById('sliderXrScale').value = 16;
+        document.getElementById('sliderXrHeight').value = 95;
+        document.getElementById('sliderXrDepth').value = 95;
+        document.getElementById('lblXrScaleVal').textContent = '0.16x (~1.3m)';
+        document.getElementById('lblXrHeightVal').textContent = '0.95m';
+        document.getElementById('lblXrDepthVal').textContent = '-0.95m';
+      });
+
+      document.getElementById('btnFollowCam').addEventListener('click', () => {
+        state.followCam = !state.followCam;
+        const btn = document.getElementById('btnFollowCam');
+        btn.textContent = state.followCam ? '🎥 Siguiendo' : '🎥 Seguir';
+        btn.className = state.followCam
+          ? 'px-2 py-1.5 rounded-lg bg-sky-500 text-slate-950 font-black text-[10px] mono transition'
+          : 'px-2 py-1.5 rounded-lg bg-white/10 hover:bg-sky-500/30 border border-white/15 text-[10px] mono font-bold text-sky-200 transition';
+      });
+
+      document.getElementById('btnToggleSimPlay').addEventListener('click', () => {
+        state.simRunning = !state.simRunning;
+        document.getElementById('iconSimPlay').textContent = state.simRunning ? '⏸' : '▶'; document.getElementById('lblSimPlay').textContent = state.simRunning ? 'Pausar' : 'Reanudar';
+      });
+
+      document.getElementById('btnCycleSpeed').addEventListener('click', () => {
+        const speeds = [0.5, 1.0, 2.0, 4.0];
+        state.simSpeed = speeds[(speeds.indexOf(state.simSpeed) + 1) % speeds.length];
+        document.getElementById('lblSpeed').textContent = `${state.simSpeed.toFixed(1)}x`;
+      });
+
+      document.getElementById('btnResetTrackView').addEventListener('click', () => {
+        state.followCam = false;
+        document.getElementById('btnFollowCam').textContent = '🎥 Seguir';
+        state.targetYaw = -0.24;
+        state.targetPitch = 0.62;
+        state.targetZoom = 14.2;
+        f1TableGroup.rotation.set(0, 0, 0);
+      });
+
+      document.getElementById('btnToggleHudView').addEventListener('click', () => {
+        state.hudVisible = !state.hudVisible;
+        const disp = state.hudVisible ? '' : 'none';
+        document.getElementById('timingTowerCard').style.display = disp;
+        document.getElementById('driverTelemetryCard').style.display = disp;
+        document.getElementById('circuitPillStrip').style.display = disp;
+        if (!state.hudVisible) settingsDrawer.classList.add('hidden');
+      });
+
+      // Modals
+      const h2hModal = document.getElementById('headToHeadModal');
+      const stratModal = document.getElementById('strategyModal');
+
+      document.getElementById('btnOpenHeadToHead').addEventListener('click', () => {
+        selA.value = state.selectedDriverId;
+        renderHeadToHeadModal();
+        h2hModal.classList.remove('hidden');
+        h2hModal.classList.add('flex');
+      });
+      document.getElementById('btnCloseHeadToHead').addEventListener('click', () => {
+        h2hModal.classList.add('hidden');
+        h2hModal.classList.remove('flex');
+      });
+      selA.addEventListener('change', renderHeadToHeadModal);
+      selB.addEventListener('change', renderHeadToHeadModal);
+
+      document.getElementById('btnOpenStrategy').addEventListener('click', () => {
+        renderStrategyModal();
+        stratModal.classList.remove('hidden');
+        stratModal.classList.add('flex');
+      });
+      document.getElementById('btnCloseStrategy').addEventListener('click', () => {
+        stratModal.classList.add('hidden');
+        stratModal.classList.remove('flex');
+      });
+
+      // Initialize Scene
+      buildPrecisionCircuit('mexico');
+      selectDriver('VER');
+      renderer.setAnimationLoop(animate);
+    })();
+  </script>
+</body>
+</html>
